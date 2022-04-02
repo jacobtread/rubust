@@ -1,22 +1,43 @@
 use std::collections::HashMap;
 use std::io::Read;
+
+use anyhow::{anyhow, Result};
+
+use crate::class::class::ClassPath;
 use crate::class::constants::*;
 use crate::io::Readable;
-use anyhow::{anyhow, Result};
 
 #[derive(Debug)]
 pub struct ConstantPool {
-    pub values: Vec<Constant>
+    pub values: HashMap<u16, Constant>,
+}
+
+impl ConstantPool {
+    pub fn get_class_path(&self, index: u16) -> Result<Option<ClassPath>> {
+        Ok(if index != 0 {
+            match self.values.get(&index) {
+                Some(it) => match it {
+                    Constant::Class(index) => match &self.values[&index] {
+                        Constant::Utf8(value) => Some(ClassPath::from_string(&value)),
+                        _ => Err(anyhow!("invalid class reference"))?
+                    }
+                    _ => Err(anyhow!("invalid class reference"))?
+                }
+                None => None
+            }
+        } else {
+            None
+        })
+    }
 }
 
 impl ConstantPool {
     fn new(size: usize) -> Self {
         return ConstantPool {
-            values: Vec::with_capacity(size)
-        }
+            values: HashMap::with_capacity(size)
+        };
     }
 }
-
 
 #[derive(Debug)]
 #[allow(dead_code)]
@@ -148,13 +169,13 @@ impl Readable for Constant {
 
 impl Readable for ConstantPool {
     fn read<B: Read>(i: &mut B) -> Result<Self> where Self: Sized {
-        let size = <u16>::read(i)? as usize;
-        let mut pool = ConstantPool::new(size);
+        let size = <u16>::read(i)?;
+        let mut pool = ConstantPool::new(size as usize);
         let mut x = 1;
         while x < size {
             let constant = Constant::read(i)?;
             let tag = constant.tag();
-            pool.values.push( constant);
+            pool.values.insert(x, constant);
             x += match tag {
                 CONSTANT_LONG | CONSTANT_DOUBLE => 2,
                 _ => 1

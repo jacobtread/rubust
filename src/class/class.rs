@@ -1,7 +1,10 @@
+use std::fmt::{Display, Formatter};
 use std::io::Read;
+
+use anyhow::{anyhow, Context, Result};
+
 use crate::class::constant::ConstantPool;
 use crate::io::Readable;
-use anyhow::{ Result};
 
 // Minor, Major
 pub type Version = (u16, u16);
@@ -10,15 +13,104 @@ pub type Version = (u16, u16);
 pub struct Class {
     pub magic_number: u32,
     pub version: Version,
-    pub pool: ConstantPool
+    pub constant_pool: ConstantPool,
+    pub access_flags: u16,
+    pub class_name: ClassPath,
 }
+
+pub const CLASS_SIGNATURE: u32 = 0xCAFEBABE;
 
 impl Readable for Class {
     fn read<B: Read>(i: &mut B) -> Result<Self> where Self: Sized {
+        let magic_number = <u32>::read(i)?;
+        if magic_number != CLASS_SIGNATURE {
+            Err(anyhow!("invalid class magic number got {}", magic_number))?
+        }
+        let minor_version = <u16>::read(i)?;
+        let major_version = <u16>::read(i)?;
+        let constant_pool = <ConstantPool>::read(i)?;
+        let access_flags = <u16>::read(i)?;
+
+        let class_name_index = <u16>::read(i)?;
+        let class_name = constant_pool.get_class_path(class_name_index)
+            .context("expected class name to exist")?
+            .ok_or(anyhow!("missing class name"))?;
+
         return Ok(Class {
-            magic_number: <u32>::read(i)?,
-            version: (<u16>::read(i)?, <u16>::read(i)?),
-            pool: <ConstantPool>::read(i)?
-        })
+            magic_number,
+            version: (minor_version, major_version),
+            constant_pool,
+            access_flags,
+            class_name,
+        });
+    }
+}
+
+#[derive(Debug)]
+pub struct ClassPath {
+    pub package: Vec<String>,
+    pub outer_classes: Vec<String>,
+    pub name: String,
+}
+
+impl ClassPath {
+    pub fn from_string(name: &str) -> ClassPath {
+        let mut package: Vec<String> = name.split('/')
+            .map(|s| s.to_string())
+            .collect();
+        let class = package.remove(package.len() - 1);
+        let mut outer_classes: Vec<String> = class.split('$')
+            .map(|s| s.to_string())
+            .collect();
+        let name = outer_classes.remove(outer_classes.len() - 1);
+        ClassPath {
+            package,
+            outer_classes,
+            name,
+        }
+    }
+
+    pub fn package_path(&self) -> String {
+        self.package.join(".")
+    }
+
+    pub fn jar_path(&self) -> String {
+        let mut builder = self.package.join("/");
+        if !self.outer_classes.is_empty() {
+            builder += self.outer_classes.join("$").as_str();
+            builder += "$"
+        }
+        builder += self.name.as_str();
+        builder += ".class";
+        builder
+    }
+
+    pub fn full_path(&self) -> String {
+        let mut builder: String = self.package.join(".");
+        if !builder.is_empty() {
+            builder += ".";
+        }
+        for outer_c in &self.outer_classes {
+            builder += format!("{}.", outer_c).as_str();
+        }
+        builder += self.name.to_string().as_str();
+        builder
+    }
+
+    pub fn is_in_java_lang(&self) -> bool {
+        if self.package.len() != 2 {
+            return false;
+        }
+        self.package[0] == "java" && self.package[1] == "lang"
+    }
+
+    pub fn is_object(&self) -> bool {
+        self.is_in_java_lang() && self.outer_classes.is_empty() && self.name == "Object"
+    }
+}
+
+impl Display for ClassPath {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.full_path().as_str())
     }
 }

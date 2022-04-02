@@ -1,5 +1,4 @@
 #![allow(dead_code)]
-
 pub const BYTECODE_JAVA_LE_4: u8 = 48;
 pub const BYTECODE_JAVA_5: u8 = 49;
 pub const BYTECODE_JAVA_6: u8 = 50;
