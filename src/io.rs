@@ -95,24 +95,37 @@ impl Writable for String {
     }
 }
 
+pub fn read_vec_from<B: Read, C: Readable, T: Readable>(i: &mut B) -> Result<Vec<C>> {
+    let length = T::read(i)?;
+    let mut out = Vec::with_capacity(length as usize);
+    for _ in 0.. {
+        out.push(C::read(i)?)
+    }
+    Ok(out)
+}
+
 #[macro_export]
 macro_rules! rstruct {
     (
-        $name:ident {
-            $($field:ident: $type:ty),* $(,)?
-        }
-    ) => {
-        #[derive(Debug, Clone)]
-        pub struct $name {
-            $($field: $type),*
-        }
-
-        impl $crate::io::Readable for $name {
-            fn read<B: std::io::Read>(i: &mut B) -> anyhow::Result<Self> where Self: Sized {
-                Ok(Self {
-                    $($field: <$type>::read(i)?,)*
-                })
+        $(
+            $name:ident {
+                $($field:ident: $type:ty),* $(,)?
             }
-        }
+        )*
+    ) => {
+        $(
+            #[derive(Debug, Clone)]
+            pub struct $name {
+                $($field: $type),*
+            }
+
+            impl $crate::io::Readable for $name {
+                fn read<B: std::io::Read>(i: &mut B) -> anyhow::Result<Self> where Self: Sized {
+                    Ok(Self {
+                        $($field: <$type>::read(i)?,)*
+                    })
+                }
+            }
+        )*
     };
 }

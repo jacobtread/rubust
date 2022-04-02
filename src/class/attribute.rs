@@ -12,25 +12,19 @@ rstruct! {
         handler_pc: u16,
         catch_type: u16,
     }
-}
 
-rstruct! {
     LineNumber {
         start_pc: u16,
         line_number: u16,
     }
-}
 
-rstruct! {
     InnerClass {
         inner_class_info_index: u16,
         outer_class_info_index: u16,
         inner_name_index: u16,
         inner_class_access_flags: u16,
     }
-}
 
-rstruct! {
     LocalVariable {
         start_pc: u16,
         length: u16,
@@ -38,15 +32,18 @@ rstruct! {
         descriptor_index: u16,
         index: u16,
     }
-}
 
-rstruct! {
     LocalVariableType {
         start_pc: u16,
         length: u16,
         name_index: u16,
         signature_index: u16,
         index: u16,
+    }
+
+    MethodParameter {
+        name_index: u16,
+        access_flags: u16,
     }
 }
 
@@ -89,6 +86,18 @@ pub struct EnclosingMethodAttr {
     method_index: u16,
 }
 
+pub struct LocalVariableTypeTableAttr {
+    types: Vec<LocalVariableType>,
+}
+
+pub struct AnnotationDefaultAttr {
+    default: Vec<u8>,
+}
+
+pub struct MethodParametersAttr {
+    values: Vec<MethodParameter>
+}
+
 pub enum AttributeValue {
     // value_index
     ConstantValue(u16),
@@ -102,4 +111,18 @@ pub enum AttributeValue {
     Synthetic,
     Depreciated,
     EnclosingMethod(EnclosingMethodAttr),
+    // signature_index
+    Signature(String),
+    SourceDebugExtension,
+    LocalVariableTypeTable(LocalVariableTypeTableAttr),
+    RuntimeVisibleAnnotations,
+    RuntimeInvisibleAnnotations,
+    RuntimeVisibleParameterAnnotations,
+    RuntimeInvisibleParameterAnnotations,
+    AnnotationDefault(AnnotationDefaultAttr),
+    StackMapTable,
+    BootstrapMethods,
+    RuntimeVisibleTypeAnnotations,
+    RuntimeInvisibleTypeAnnotations,
+    MethodParameters(MethodParametersAttr),
 }
