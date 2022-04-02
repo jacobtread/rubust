@@ -1,4 +1,5 @@
 use std::fmt::{Display, Formatter};
+use std::intrinsics::assert_uninit_valid;
 use std::io::Read;
 
 use anyhow::{anyhow, Context, Result};
@@ -40,14 +41,20 @@ impl Readable for Class {
         let super_name_index = <u16>::read(i)?;
         let super_name = constant_pool.get_class_path(super_name_index)?;
 
-        let interface_count = <u16>::read(i)? as usize;
-        let mut interfaces = Vec::with_capacity(interface_count);
+        let interface_count = <u16>::read(i)?;
+        let mut interfaces = Vec::with_capacity(interface_count as usize);
 
         for _ in 0..interface_count {
             let name_index = <u16>::read(i)?;
             let name = constant_pool.get_class_path(name_index)?
                 .ok_or(anyhow!("invalid interface name reference"))?;
             interfaces.push(name)
+        }
+
+        let fields_count = <u16>::read(i)?;
+        let fields = Vec::with_capacity(fields_count as usize);
+        for _ in 0..fields_count {
+
         }
 
         return Ok(Class {

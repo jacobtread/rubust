@@ -94,3 +94,25 @@ impl Writable for String {
         Ok(())
     }
 }
+
+#[macro_export]
+macro_rules! rstruct {
+    (
+        $name:ident {
+            $($field:ident: $type:ty),* $(,)?
+        }
+    ) => {
+        #[derive(Debug, Clone)]
+        pub struct $name {
+            $($field: $type),*
+        }
+
+        impl $crate::io::Readable for $name {
+            fn read<B: std::io::Read>(i: &mut B) -> anyhow::Result<Self> where Self: Sized {
+                Ok(Self {
+                    $($field: <$type>::read(i)?,)*
+                })
+            }
+        }
+    };
+}
