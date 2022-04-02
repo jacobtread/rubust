@@ -16,6 +16,8 @@ pub struct Class {
     pub constant_pool: ConstantPool,
     pub access_flags: u16,
     pub class_name: ClassPath,
+    pub super_name: Option<ClassPath>,
+    pub interfaces: Vec<ClassPath>,
 }
 
 pub const CLASS_SIGNATURE: u32 = 0xCAFEBABE;
@@ -32,9 +34,21 @@ impl Readable for Class {
         let access_flags = <u16>::read(i)?;
 
         let class_name_index = <u16>::read(i)?;
-        let class_name = constant_pool.get_class_path(class_name_index)
-            .context("expected class name to exist")?
+        let class_name = constant_pool.get_class_path(class_name_index)?
             .ok_or(anyhow!("missing class name"))?;
+
+        let super_name_index = <u16>::read(i)?;
+        let super_name = constant_pool.get_class_path(super_name_index)?;
+
+        let interface_count = <u16>::read(i)? as usize;
+        let mut interfaces = Vec::with_capacity(interface_count);
+
+        for _ in 0..interface_count {
+            let name_index = <u16>::read(i)?;
+            let name = constant_pool.get_class_path(name_index)?
+                .ok_or(anyhow!("invalid interface name reference"))?;
+            interfaces.push(name)
+        }
 
         return Ok(Class {
             magic_number,
@@ -42,6 +56,8 @@ impl Readable for Class {
             constant_pool,
             access_flags,
             class_name,
+            super_name,
+            interfaces,
         });
     }
 }

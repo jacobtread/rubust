@@ -16,7 +16,9 @@ mod tests {
             Ok(t) => {
                println!("{:?}", t)
             }
-            _ => {}
+            Err(t) => {
+                println!("{:?}", t)
+            }
         }
     }
 }
