@@ -12,6 +12,7 @@ pub struct ConstantPool {
     pub values: HashMap<u16, Constant>,
 }
 
+
 impl ConstantPool {
     pub fn get_class_path(&self, index: u16) -> Result<Option<ClassPath>> {
         Ok(if index != 0 {

@@ -1,8 +1,9 @@
-use std::io::Read;
+use std::io::{Cursor, Read};
 
 use anyhow::{anyhow, Context, Result};
 
-use crate::io::Readable;
+use crate::class::constant::{Constant, ConstantPool};
+use crate::io::{read_byte_vec, read_vec_from, Readable};
 use crate::rstruct;
 
 rstruct! {
@@ -51,6 +52,7 @@ pub struct Annotation {
     type_index: u16,
 }
 
+#[derive(Debug, Clone)]
 pub struct Attribute {
     pub name: String,
     pub value: AttributeValue,
@@ -59,26 +61,9 @@ pub struct Attribute {
 pub struct CodeAttr {
     max_stack: u16,
     max_locals: u16,
-    code_length: u32,
     code: Vec<u8>,
     exception_table: Vec<ExceptionTableEntry>,
     attributes: Vec<Attribute>,
-}
-
-pub struct ExceptionsAttr {
-    indexes: Vec<u16>,
-}
-
-pub struct LineNumberTableAttr {
-    values: Vec<LineNumber>,
-}
-
-pub struct LocalVariableTableAttr {
-    values: Vec<LocalVariable>,
-}
-
-pub struct InnerClassesAttr {
-    classes: Vec<InnerClass>,
 }
 
 pub struct EnclosingMethodAttr {
@@ -86,43 +71,91 @@ pub struct EnclosingMethodAttr {
     method_index: u16,
 }
 
-pub struct LocalVariableTypeTableAttr {
-    types: Vec<LocalVariableType>,
-}
-
-pub struct AnnotationDefaultAttr {
-    default: Vec<u8>,
-}
-
-pub struct MethodParametersAttr {
-    values: Vec<MethodParameter>
-}
-
 pub enum AttributeValue {
     // value_index
     ConstantValue(u16),
     Code(CodeAttr),
-    Exceptions(ExceptionsAttr),
+    Exceptions(Vec<u16>),
     // source-file_index
     SourceFile(u16),
-    LineNumberTable(LineNumberTableAttr),
-    LocalVariableTable(LocalVariableTableAttr),
-    InnerClasses(InnerClassesAttr),
+    LineNumberTable(Vec<LineNumber>),
+    LocalVariableTable(Vec<LocalVariable>),
+    InnerClasses(Vec<InnerClass>),
     Synthetic,
     Depreciated,
     EnclosingMethod(EnclosingMethodAttr),
     // signature_index
     Signature(String),
     SourceDebugExtension,
-    LocalVariableTypeTable(LocalVariableTypeTableAttr),
+    LocalVariableTypeTable(Vec<LocalVariableType>),
     RuntimeVisibleAnnotations,
     RuntimeInvisibleAnnotations,
     RuntimeVisibleParameterAnnotations,
     RuntimeInvisibleParameterAnnotations,
-    AnnotationDefault(AnnotationDefaultAttr),
+    AnnotationDefault(Vec<u8>),
     StackMapTable,
     BootstrapMethods,
     RuntimeVisibleTypeAnnotations,
     RuntimeInvisibleTypeAnnotations,
-    MethodParameters(MethodParametersAttr),
+    MethodParameters(Vec<MethodParameter>),
+}
+
+impl AttributeValue {
+    pub fn from_name(
+        name: &str,
+        data: &[u8],
+        constant_pool: &ConstantPool,
+    ) -> Result<AttributeValue> {
+        let c = &mut Cursor::new(data);
+
+        Ok(match name {
+            "Code" => {
+                let max_stack = u16::read(c)?;
+                let max_locals = u16::read(c)?;
+
+                let code_length = u32::read(c)?;
+                let code = read_byte_vec(c, code_length as usize)?;
+
+                let exception_table_length = u16::read(c)? as usize;
+                let exception_table =
+                    read_vec_from::<ExceptionTableEntry, Cursor<&[u8]>>(c, exception_table_length)?;
+
+                let attributes_count = u16::read(c)? as usize;
+                let attributes =
+                    read_vec_from::<Attribute, Cursor<&[u8]>>(c, attributes_count)?;
+
+                AttributeValue::Code(CodeAttr {
+                    max_stack,
+                    max_locals,
+                    code,
+                    exception_table,
+                    attributes,
+                })
+            }
+            "ConstantValue" => AttributeValue::ConstantValue(u16::read(c)?),
+            "Deprecated" => AttributeValue::Depreciated,
+            "Exceptions" => {
+                let exceptions_count = u16::read(c)? as usize;
+                let exceptions =
+                    read_vec_from::<u16, Cursor<&[u8]>>(c, exceptions_count)?;
+                AttributeValue::Exceptions(exceptions)
+            }
+            "InnerClasses" => {
+                let classes_count = u16::read(c)? as usize;
+                let classes =
+                    read_vec_from::<InnerClass, Cursor<&[u8]>>(c, classes_count)?;
+                AttributeValue::InnerClasses(classes)
+            }
+            "Signature" => {
+                let id = u16::read(c)?;
+                match constant_pool.values
+                    .get(&id)
+                    .ok_or(anyhow!("missing constant value {}", id))?
+                {
+                    Constant::Utf8(value) => AttributeValue::Signature(value.clone())m,
+                    _ => Err(anyhow!("invalid signature constant. wasn't utf8"))
+                }
+            }
+        })
+    }
 }

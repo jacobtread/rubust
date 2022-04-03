@@ -76,10 +76,7 @@ generate_rw! {
 impl Readable for String {
     fn read<B: Read>(i: &mut B) -> Result<Self> where Self: Sized {
         let length = <u16>::read(i)? as usize;
-        let mut bytes = Vec::with_capacity(length);
-        unsafe { bytes.set_len(length) }
-        i.read_exact(&mut bytes)
-            .map_err(anyhow::Error::from)?;
+        let mut bytes = read_byte_vec(i, length)?;
         Ok(
             String::from_utf8(bytes)
                 .context("string contained invalid utf-8 encoding")?
@@ -95,9 +92,17 @@ impl Writable for String {
     }
 }
 
-pub fn read_vec_from<B: Read, C: Readable, T: Readable>(i: &mut B) -> Result<Vec<C>> {
-    let length = T::read(i)?;
-    let mut out = Vec::with_capacity(length as usize);
+#[inline]
+pub fn read_byte_vec<B: Read>(&mut i: B, length: usize) -> Result<Vec<u8>> {
+    let mut bytes = Vec::with_capacity(length);
+    unsafe { bytes.set_len(length) }
+    i.read_exact(&mut bytes)
+        .map_err(anyhow::Error::from)?;
+    Ok(bytes)
+}
+
+pub fn read_vec_from<C: Readable, B: Read>(i: &mut B, length: usize) -> Result<Vec<C>> {
+    let mut out = Vec::with_capacity(length);
     for _ in 0.. {
         out.push(C::read(i)?)
     }
