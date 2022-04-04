@@ -1,9 +1,11 @@
 use std::io::Write;
+use std::ptr::write;
 
 use anyhow::Result;
 
 use crate::class::class::Class;
 use crate::class::constants::{ACC_ANNOTATION, ACC_ENUM, ACC_FINAL, ACC_INTERFACE, ACC_PRIVATE, ACC_PROTECTED, ACC_PUBLIC, ACC_STATIC};
+use crate::class::descriptor::{Descriptor, real_name};
 use crate::class::member::Member;
 
 mod core;
@@ -90,9 +92,32 @@ impl ClassWriter {
             write!(o, "final ")?;
         }
 
-        write!(o, "{} {};\n", field.descriptor, field.name)?;
+        self.write_descriptor(&field.descriptor, o)?;
+
+        write!(o, " {};\n", field.name)?;
 
         println!("{:?}", field);
+        Ok(())
+    }
+
+    pub fn write_descriptor<B: Write>(&self, descriptor: &Descriptor, o: &mut B) -> Result<()> {
+        match descriptor {
+            Descriptor::Int => write!(o, "int")?,
+            Descriptor::Long => write!(o, "long")?,
+            Descriptor::Float => write!(o, "float")?,
+            Descriptor::Double => write!(o, "double")?,
+            Descriptor::Char => write!(o, "char")?,
+            Descriptor::Byte => write!(o, "byte")?,
+            Descriptor::Boolean => write!(o, "boolean")?,
+            Descriptor::Short => write!(o, "short")?,
+            Descriptor::Array { dimensions, descriptor } => {
+                self.write_descriptor(&*descriptor, o)?;
+                write!(o, "{}", "[]".repeat(*dimensions as usize))?;
+            }
+            Descriptor::ClassReference(class) => write!(o, "{}", real_name(class))?,
+            _ => write!(o, "/* Failed to parse type*/")?,
+        }
+
         Ok(())
     }
 }

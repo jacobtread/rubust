@@ -1,3 +1,4 @@
+use std::env::var;
 use std::path::Display;
 
 #[derive(Debug, Clone)]
@@ -23,8 +24,16 @@ pub enum Descriptor {
     Unknown(String),
 }
 
+pub fn is_internal(value: &String) -> bool {
+    value.starts_with("java/lang/")
+}
+
+pub fn real_name(value: &String) -> String {
+    String::from(value.trim_start_matches("java/lang/"))
+}
+
 impl Descriptor {
-    fn parse(value: &str) -> Descriptor {
+    pub fn parse(value: &str) -> Descriptor {
         match value {
             "B" => Descriptor::Byte,
             "C" => Descriptor::Char,
@@ -51,7 +60,7 @@ impl Descriptor {
                         let parameters;
                         if parts.0.len() != 1 {
                             let raw_params = parts.0.split_at(1).1;
-                            parameters = Descriptor::from_str(String::from(raw_params))
+                            parameters = Descriptor::parse_all(String::from(raw_params))
                         } else {
                             parameters = Vec::with_capacity(0);
                         }
@@ -71,8 +80,8 @@ impl Descriptor {
         }
     }
 
-    pub fn from_str(value: String) -> Vec<Descriptor> {
-        let parts = value.split_inclusive(r"([BCDFIJSZV]|(L.*;)|(\[.*]))");
+    pub fn parse_all(value: String) -> Vec<Descriptor> {
+        let parts = value.split_inclusive(r"([BCDFIJSZV]|(L.*;)|(\[.*))");
         parts.map(Descriptor::parse).collect()
     }
 }
