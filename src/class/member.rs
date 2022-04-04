@@ -32,6 +32,7 @@ impl Member {
         for _ in 0..attr_count {
             attributes.push(Attribute::read(i, constant_pool)?);
         }
+
         Ok(Member {
             access_flags,
             name,

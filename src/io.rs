@@ -76,7 +76,7 @@ generate_rw! {
 impl Readable for String {
     fn read<B: Read>(i: &mut B) -> Result<Self> where Self: Sized {
         let length = <u16>::read(i)? as usize;
-        let mut bytes = read_byte_vec(i, length)?;
+        let bytes = read_byte_vec(i, length)?;
         Ok(
             String::from_utf8(bytes)
                 .context("string contained invalid utf-8 encoding")?
@@ -93,7 +93,7 @@ impl Writable for String {
 }
 
 #[inline]
-pub fn read_byte_vec<B: Read>(&mut i: B, length: usize) -> Result<Vec<u8>> {
+pub fn read_byte_vec<B: Read>(i: &mut B, length: usize) -> Result<Vec<u8>> {
     let mut bytes = Vec::with_capacity(length);
     unsafe { bytes.set_len(length) }
     i.read_exact(&mut bytes)
@@ -103,7 +103,7 @@ pub fn read_byte_vec<B: Read>(&mut i: B, length: usize) -> Result<Vec<u8>> {
 
 pub fn read_vec_from<C: Readable, B: Read>(i: &mut B, length: usize) -> Result<Vec<C>> {
     let mut out = Vec::with_capacity(length);
-    for _ in 0.. {
+    for _ in 0..length {
         out.push(C::read(i)?)
     }
     Ok(out)
@@ -120,6 +120,7 @@ macro_rules! rstruct {
     ) => {
         $(
             #[derive(Debug, Clone)]
+            #[allow(dead_code)]
             pub struct $name {
                 $($field: $type),*
             }

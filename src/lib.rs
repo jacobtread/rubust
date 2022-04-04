@@ -14,7 +14,7 @@ mod tests {
         let out = <Class>::read(&mut cursor);
         match out {
             Ok(t) => {
-               println!("{:?}", t)
+               println!("{:#?}", t.methods[0])
             }
             Err(t) => {
                 println!("{:?}", t)

@@ -1,10 +1,11 @@
 use std::fmt::{Display, Formatter};
-use std::intrinsics::assert_uninit_valid;
 use std::io::Read;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, Result};
+use crate::class::attribute::Attribute;
 
 use crate::class::constant::ConstantPool;
+use crate::class::member::Member;
 use crate::io::Readable;
 
 // Minor, Major
@@ -19,6 +20,9 @@ pub struct Class {
     pub class_name: ClassPath,
     pub super_name: Option<ClassPath>,
     pub interfaces: Vec<ClassPath>,
+    pub fields: Vec<Member>,
+    pub methods: Vec<Member>,
+    pub attributes: Vec<Attribute>
 }
 
 pub const CLASS_SIGNATURE: u32 = 0xCAFEBABE;
@@ -29,32 +33,45 @@ impl Readable for Class {
         if magic_number != CLASS_SIGNATURE {
             Err(anyhow!("invalid class magic number got {}", magic_number))?
         }
-        let minor_version = <u16>::read(i)?;
-        let major_version = <u16>::read(i)?;
+        let minor_version = u16::read(i)?;
+        let major_version = u16::read(i)?;
         let constant_pool = <ConstantPool>::read(i)?;
-        let access_flags = <u16>::read(i)?;
+        let access_flags = u16::read(i)?;
 
-        let class_name_index = <u16>::read(i)?;
+        let class_name_index = u16::read(i)?;
         let class_name = constant_pool.get_class_path(class_name_index)?
             .ok_or(anyhow!("missing class name"))?;
 
-        let super_name_index = <u16>::read(i)?;
+        let super_name_index = u16::read(i)?;
         let super_name = constant_pool.get_class_path(super_name_index)?;
 
-        let interface_count = <u16>::read(i)?;
+        let interface_count = u16::read(i)?;
         let mut interfaces = Vec::with_capacity(interface_count as usize);
 
         for _ in 0..interface_count {
-            let name_index = <u16>::read(i)?;
+            let name_index = u16::read(i)?;
             let name = constant_pool.get_class_path(name_index)?
                 .ok_or(anyhow!("invalid interface name reference"))?;
             interfaces.push(name)
         }
 
-        let fields_count = <u16>::read(i)?;
-        let fields = Vec::with_capacity(fields_count as usize);
+        let fields_count = u16::read(i)? as usize;
+        let mut fields = Vec::with_capacity(fields_count );
         for _ in 0..fields_count {
+            fields.push(Member::read(i, &constant_pool)?);
+        }
 
+        let methods_count = u16::read(i)? as usize;
+        let mut methods = Vec::with_capacity(methods_count );
+        for _ in 0..methods_count {
+            methods.push(Member::read(i, &constant_pool)?);
+        }
+
+        let attributes_count = u16::read(i)? as usize;
+        let mut attributes = Vec::with_capacity(attributes_count);
+
+        for _ in 0..attributes_count {
+            attributes.push(Attribute::read(i, &constant_pool)?);
         }
 
         return Ok(Class {
@@ -65,6 +82,9 @@ impl Readable for Class {
             class_name,
             super_name,
             interfaces,
+            fields,
+            methods,
+            attributes
         });
     }
 }

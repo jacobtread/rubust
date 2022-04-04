@@ -1,6 +1,6 @@
 use std::io::{Cursor, Read};
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, Result};
 
 use crate::class::attribute::AttributeValue::SourceDebugExtension;
 use crate::class::constant::{Constant, ConstantPool};
@@ -49,10 +49,6 @@ rstruct! {
     }
 }
 
-pub struct Annotation {
-    type_index: u16,
-}
-
 #[derive(Debug, Clone)]
 pub struct Attribute {
     pub name: String,
@@ -68,6 +64,7 @@ impl Attribute {
         let name = constant_pool.get_string(name_index)?;
         let length = u32::read(i)? as usize;
         let data = read_byte_vec(i, length)?;
+        println!("{}", name);
         Ok(Attribute {
             name: name.clone(),
             value: AttributeValue::from_name(
@@ -79,6 +76,7 @@ impl Attribute {
     }
 }
 
+#[derive(Debug, Clone)]
 pub enum AttributeValue {
     // value_index
     ConstantValue(u16),
@@ -130,16 +128,20 @@ impl AttributeValue {
                 let max_stack = u16::read(c)?;
                 let max_locals = u16::read(c)?;
 
-                let code_length = u32::read(c)?;
-                let code = read_byte_vec(c, code_length as usize)?;
+                let code_length = u32::read(c)? as usize;
+                let code = read_byte_vec(c, code_length)?;
 
                 let exception_table_length = u16::read(c)? as usize;
-                let exception_table =
-                    read_vec_from(c, exception_table_length)?;
+                let exception_table = read_vec_from(c, exception_table_length)?;
 
                 let attributes_count = u16::read(c)? as usize;
-                let attributes =
-                    read_vec_from(c, attributes_count)?;
+                let mut attributes = Vec::with_capacity(attributes_count);
+
+
+                for _ in 0..attributes_count {
+                    attributes.push(Attribute::read(c, &constant_pool)?);
+                }
+
 
                 AttributeValue::Code {
                     max_stack,
@@ -153,25 +155,17 @@ impl AttributeValue {
             "Deprecated" => AttributeValue::Depreciated,
             "Exceptions" => {
                 let exceptions_count = u16::read(c)? as usize;
-                let exceptions =
-                    read_vec_from::<u16, Cursor<&[u8]>>(c, exceptions_count)?;
+                let exceptions = read_vec_from(c, exceptions_count)?;
                 AttributeValue::Exceptions(exceptions)
             }
             "InnerClasses" => {
                 let classes_count = u16::read(c)? as usize;
-                let classes =
-                    read_vec_from(c, classes_count)?;
+                let classes = read_vec_from(c, classes_count)?;
                 AttributeValue::InnerClasses(classes)
             }
             "Signature" => {
                 let id = u16::read(c)?;
-                match constant_pool.values
-                    .get(&id)
-                    .ok_or(anyhow!("missing constant value {}", id))?
-                {
-                    Constant::Utf8(value) => AttributeValue::Signature(value.clone()),
-                    _ => Err(anyhow!("invalid signature constant. wasn't utf8"))
-                }
+                AttributeValue::Signature(constant_pool.get_string(id)?)
             }
             "SourceDebugExtension" => SourceDebugExtension(data.to_vec()),
             "LineNumberTable" => {
