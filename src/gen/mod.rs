@@ -4,7 +4,7 @@ use std::ptr::write;
 use anyhow::Result;
 
 use crate::class::class::Class;
-use crate::class::constants::{ACC_ANNOTATION, ACC_ENUM, ACC_FINAL, ACC_INTERFACE, ACC_PRIVATE, ACC_PROTECTED, ACC_PUBLIC, ACC_STATIC};
+use crate::class::constants::{ACC_ANNOTATION, ACC_ENUM, ACC_FINAL, ACC_INTERFACE, ACC_PRIVATE, ACC_PROTECTED, ACC_PUBLIC, ACC_STATIC, AccessFlags};
 use crate::class::descriptor::Descriptor;
 use crate::class::member::Member;
 
@@ -29,18 +29,7 @@ impl ClassWriter {
             write!(o, "\n")?;
         }
 
-
-        if class.access_flags.contains(ACC_PUBLIC) {
-            write!(o, "public ")?;
-        } else if class.access_flags.contains(ACC_PROTECTED) {
-            write!(o, "protected ")?;
-        } else if class.access_flags.contains(ACC_PRIVATE) {
-            write!(o, "private ")?;
-        }
-
-        if class.access_flags.contains(ACC_FINAL) {
-            write!(o, "final ")?;
-        }
+        self.write_access_flags(&class.access_flags, o)?;
 
         if class.access_flags.contains(ACC_ENUM) {
             write!(o, "enum ")?;
@@ -83,25 +72,31 @@ impl ClassWriter {
 
         Ok(())
     }
-    pub fn write_field<B: Write>(&self, field: &Member, o: &mut B) -> Result<()> {
-        write!(o, "{}", "    ")?;
 
-        if field.access_flags.contains(ACC_PUBLIC) {
+    pub fn write_access_flags<B: Write>(&self, access_flags: &AccessFlags, o: &mut B) -> Result<()> {
+        if access_flags.contains(ACC_PUBLIC) {
             write!(o, "public ")?;
-        } else if field.access_flags.contains(ACC_PROTECTED) {
+        } else if access_flags.contains(ACC_PROTECTED) {
             write!(o, "protected ")?;
-        } else if field.access_flags.contains(ACC_PRIVATE) {
+        } else if access_flags.contains(ACC_PRIVATE) {
             write!(o, "private ")?;
         }
 
-        if field.access_flags.contains(ACC_STATIC) {
+        if access_flags.contains(ACC_STATIC) {
             write!(o, "static ")?;
         }
 
-        if field.access_flags.contains(ACC_FINAL) {
+        if access_flags.contains(ACC_FINAL) {
             write!(o, "final ")?;
         }
 
+        Ok(())
+    }
+
+    pub fn write_field<B: Write>(&self, field: &Member, o: &mut B) -> Result<()> {
+        write!(o, "{}", "    ")?;
+
+        self.write_access_flags(&field.access_flags, o)?;
         self.write_descriptor(&field.descriptor, o)?;
 
         write!(o, " {};\n", field.name)?;
