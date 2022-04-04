@@ -143,7 +143,7 @@ impl ClassWriter {
         let c = method.is_constructor();
         if c {
             write!(o, "{}(", class.class_name.name)?;
-            println!("{:?}", method);
+            println!("{:?}", class);
         } else {
             self.write_descriptor(&*desc.return_type, o)?;
             write!(o, " {}(", method.name);
