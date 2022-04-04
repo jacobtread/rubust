@@ -3,6 +3,7 @@ use std::io::Read;
 use crate::class::attribute::Attribute;
 use crate::class::constant::ConstantPool;
 use crate::class::constants::AccessFlags;
+use crate::class::descriptor::Descriptor;
 use crate::io::Readable;
 
 #[derive(Debug, Clone)]
@@ -28,6 +29,10 @@ impl Member {
 
         let desc_index = u16::read(i)?;
         let descriptor = constant_pool.get_string(desc_index)?;
+
+        let d = Descriptor::from_str(descriptor.clone());
+
+        println!("{:?}", d);
 
         let attr_count = u16::read(i)? as usize;
         let mut attributes = Vec::with_capacity(attr_count);

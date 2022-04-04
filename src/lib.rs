@@ -19,8 +19,8 @@ mod tests {
             Ok(t) => {
                 // println!("{:#?}", t.methods[1]);
 
-                let w = ClassWriter {};
-                w.write_class(&t, &mut stdout());
+                // let w = ClassWriter {};
+                // w.write_class(&t, &mut stdout());
             }
             Err(t) => {
                 println!("{:?}", t)
