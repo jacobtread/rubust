@@ -4,7 +4,7 @@ pub mod gen;
 
 #[cfg(test)]
 mod tests {
-    use std::io::{Cursor, stdout};
+    use std::io::{Cursor, stdout, Write};
 
     use crate::class::class::Class;
     use crate::gen::ClassWriter;
@@ -21,10 +21,10 @@ mod tests {
 
                 let w = ClassWriter {};
                 w.write_class(&t, &mut stdout());
+                stdout().flush();
             }
-            Err(t) => {
-                println!("{:?}", t)
-            }
+            Err(t) => {}
         }
+
     }
 }

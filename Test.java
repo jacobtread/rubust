@@ -12,6 +12,10 @@ public class Test {
 
     public Test() {}
 
+    public Test(String a, int b) {
+        this();
+    }
+
     public static void main(String[] args) {
         System.out.println("Hello");
     }

@@ -1,7 +1,6 @@
 use std::io::Write;
-use std::ptr::write;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 
 use crate::class::class::Class;
 use crate::class::constants::{ACC_ANNOTATION, ACC_ENUM, ACC_FINAL, ACC_INTERFACE, ACC_PRIVATE, ACC_PROTECTED, ACC_PUBLIC, ACC_STATIC, AccessFlags};
@@ -66,6 +65,14 @@ impl ClassWriter {
             for field in class.fields.iter() {
                 self.write_field(field, o)?;
             }
+
+            write!(o, "\n")?;
+        }
+
+        if !class.methods.is_empty() {
+            for method in class.methods.iter() {
+                self.write_method(class, method, o)?;
+            }
         }
 
         write!(o, "}}")?;
@@ -94,14 +101,13 @@ impl ClassWriter {
     }
 
     pub fn write_field<B: Write>(&self, field: &Member, o: &mut B) -> Result<()> {
-        write!(o, "{}", "    ")?;
+        write!(o, "    ")?;
 
         self.write_access_flags(&field.access_flags, o)?;
         self.write_descriptor(&field.descriptor, o)?;
 
         write!(o, " {};\n", field.name)?;
 
-        println!("{:?}", field);
         Ok(())
     }
 
@@ -115,13 +121,51 @@ impl ClassWriter {
             Descriptor::Byte => write!(o, "byte")?,
             Descriptor::Boolean => write!(o, "boolean")?,
             Descriptor::Short => write!(o, "short")?,
-            Descriptor::Array { dimensions, descriptor } => {
-                self.write_descriptor(&*descriptor, o)?;
-                write!(o, "{}", "[]".repeat(*dimensions as usize))?;
+            Descriptor::Void => write!(o, "void")?,
+            Descriptor::Array(array) => {
+                self.write_descriptor(&*array.descriptor, o)?;
+                write!(o, "{}", "[]".repeat(array.dimensions as usize))?;
             }
             Descriptor::ClassReference(class) => write!(o, "{}", class.name)?,
             _ => write!(o, "/* Failed to parse type*/")?,
         }
+
+        Ok(())
+    }
+
+    pub fn write_method<B: Write>(&self, class: &Class, method: &Member, o: &mut B) -> Result<()> {
+        write!(o, "    ")?;
+        self.write_access_flags(&method.access_flags, o)?;
+        let desc = match &method.descriptor {
+            Descriptor::Method(method) => method,
+            _ => Err(anyhow!("expected method descriptor for method"))?
+        };
+        let c = method.is_constructor();
+        if c {
+            write!(o, "{}(", class.class_name.name)?;
+            println!("{:?}", method);
+        } else {
+            self.write_descriptor(&*desc.return_type, o)?;
+            write!(o, " {}(", method.name);
+        }
+
+        let mut p_num = 0;
+        if !desc.parameters.is_empty() {
+            let last = desc.parameters.len() - 1;
+            for (i, parameter) in desc.parameters.iter().enumerate() {
+                self.write_descriptor(parameter, o)?;
+                write!(o, " p_{}", p_num)?;
+                p_num += 1;
+                if i != last {
+                    write!(o, ", ")?;
+                }
+            }
+        }
+
+        write!(o, ") {{\n")?;
+
+
+        write!(o, "    }}\n")?;
 
         Ok(())
     }

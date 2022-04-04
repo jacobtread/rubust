@@ -1,4 +1,3 @@
-use std::f32::consts::E;
 use std::io::Read;
 
 use crate::class::attribute::Attribute;
@@ -32,8 +31,6 @@ impl Member {
         let raw_descriptor = constant_pool.get_string(desc_index)?;
 
         let descriptor = Descriptor::parse(raw_descriptor.as_str());
-
-        println!("{:?}", descriptor);
 
         let attr_count = u16::read(i)? as usize;
         let mut attributes = Vec::with_capacity(attr_count);

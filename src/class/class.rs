@@ -45,14 +45,14 @@ impl Class {
                     })
                 }
             }
-            Descriptor::Array { descriptor, .. } => {
-                out.append(&mut Class::collect_imports_for(&*descriptor))
+            Descriptor::Array(arr) => {
+                out.append(&mut Class::collect_imports_for(&arr.descriptor))
             }
-            Descriptor::Function { parameters, return_type } => {
-                for x in parameters {
-                    out.append(&mut Class::collect_imports_for(x))
+            Descriptor::Method(method) => {
+                for x in &method.parameters {
+                    out.append(&mut Class::collect_imports_for(&x))
                 }
-                out.append(&mut Class::collect_imports_for(&*return_type))
+                out.append(&mut Class::collect_imports_for(&method.return_type))
             }
             _ => {}
         }
