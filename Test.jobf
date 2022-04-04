@@ -1,0 +1,4 @@
+c test.Test = test
+f test.Test.h:I = f1h
+f test.Test.hi:Ljava/lang/String; = f0hi
+f test.Test.x:[[[I = f2x

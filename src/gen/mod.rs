@@ -1,12 +1,13 @@
 use std::io::Write;
 
 use anyhow::{anyhow, Result};
-use crate::class::attribute::{AttributeValue, CodeAttr};
 
+use crate::class::attribute::{AttributeValue, CodeAttr};
 use crate::class::class::Class;
 use crate::class::constants::{ACC_ANNOTATION, ACC_ENUM, ACC_FINAL, ACC_INTERFACE, ACC_PRIVATE, ACC_PROTECTED, ACC_PUBLIC, ACC_STATIC, AccessFlags};
 use crate::class::descriptor::Descriptor;
 use crate::class::member::Member;
+use crate::class::op::OpCodes;
 
 mod core;
 
@@ -134,8 +135,19 @@ impl ClassWriter {
         Ok(())
     }
 
-    pub fn write_code<B: Write>(&self, class: &Class, code: &CodeAttr, o: &mut B) -> Result<()> {
-        
+    pub fn write_code<B: Write>(&self, class: &Class, code_attr: &CodeAttr, o: &mut B) -> Result<()> {
+        let mut pos = 0;
+        let code = &code_attr.code;
+        while pos < code.len() {
+            let instr = OpCodes::try_from(code[pos]).unwrap();
+            write!(o, "      {}", instr.get_name())?;
+            let argc = instr.get_argc();
+            for offset in 0..argc {
+                write!(o, " {}", code[pos + offset])?;
+            }
+            writeln!(o)?;
+            pos += 1 + argc;
+        }
         Ok(())
     }
 
@@ -169,6 +181,19 @@ impl ClassWriter {
         }
 
         write!(o, ") {{\n")?;
+
+        let code_attr = &method.attributes
+            .iter()
+            .find(|a| a.name == "Code")
+            .unwrap()
+            .value;
+
+        match code_attr {
+            AttributeValue::Code(code_attr_value) => {
+                self.write_code(class, code_attr_value, o)?;
+            }
+            _ => Err(anyhow!("code expected code attribute"))?
+        }
 
 
         write!(o, "    }}\n")?;
