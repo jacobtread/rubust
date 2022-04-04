@@ -76,16 +76,20 @@ impl Attribute {
 }
 
 #[derive(Debug, Clone)]
+pub struct CodeAttr {
+    pub max_stack: u16,
+    pub max_locals: u16,
+    pub code: Vec<u8>,
+    pub exception_table: Vec<ExceptionTableEntry>,
+    pub attributes: Vec<Attribute>,
+}
+
+
+#[derive(Debug, Clone)]
 pub enum AttributeValue {
     // value_index
     ConstantValue(u16),
-    Code {
-        max_stack: u16,
-        max_locals: u16,
-        code: Vec<u8>,
-        exception_table: Vec<ExceptionTableEntry>,
-        attributes: Vec<Attribute>,
-    },
+    Code(CodeAttr),
     Exceptions(Vec<u16>),
     // source-file_index
     SourceFile(u16),
@@ -142,13 +146,13 @@ impl AttributeValue {
                 }
 
 
-                AttributeValue::Code {
+                AttributeValue::Code(CodeAttr {
                     max_stack,
                     max_locals,
                     code,
                     exception_table,
                     attributes,
-                }
+                })
             }
             "ConstantValue" => AttributeValue::ConstantValue(u16::read(c)?),
             "Deprecated" => AttributeValue::Depreciated,

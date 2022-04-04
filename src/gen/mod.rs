@@ -1,6 +1,7 @@
 use std::io::Write;
 
 use anyhow::{anyhow, Result};
+use crate::class::attribute::{AttributeValue, CodeAttr};
 
 use crate::class::class::Class;
 use crate::class::constants::{ACC_ANNOTATION, ACC_ENUM, ACC_FINAL, ACC_INTERFACE, ACC_PRIVATE, ACC_PROTECTED, ACC_PUBLIC, ACC_STATIC, AccessFlags};
@@ -130,6 +131,11 @@ impl ClassWriter {
             _ => write!(o, "/* Failed to parse type*/")?,
         }
 
+        Ok(())
+    }
+
+    pub fn write_code<B: Write>(&self, class: &Class, code: &CodeAttr, o: &mut B) -> Result<()> {
+        
         Ok(())
     }
 
