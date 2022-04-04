@@ -2,10 +2,11 @@ use std::fmt::{Display, Formatter};
 use std::io::Read;
 
 use anyhow::{anyhow, Result};
-use crate::class::attribute::Attribute;
 
+use crate::class::attribute::Attribute;
 use crate::class::constant::ConstantPool;
 use crate::class::constants::AccessFlags;
+use crate::class::descriptor::Descriptor;
 use crate::class::member::Member;
 use crate::io::Readable;
 
@@ -23,7 +24,51 @@ pub struct Class {
     pub interfaces: Vec<ClassPath>,
     pub fields: Vec<Member>,
     pub methods: Vec<Member>,
-    pub attributes: Vec<Attribute>
+    pub attributes: Vec<Attribute>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Import {
+    pub package: Vec<String>,
+    pub name: String,
+}
+
+impl Class {
+    fn collect_imports_for(descriptor: &Descriptor) -> Vec<Import> {
+        let mut out = Vec::new();
+        match descriptor {
+            Descriptor::ClassReference(path) => {
+                if !path.is_in_java_lang() {
+                    out.push(Import {
+                        package: path.package.clone(),
+                        name: path.name.clone(),
+                    })
+                }
+            }
+            Descriptor::Array { descriptor, .. } => {
+                out.append(&mut Class::collect_imports_for(&*descriptor))
+            }
+            Descriptor::Function { parameters, return_type } => {
+                for x in parameters {
+                    out.append(&mut Class::collect_imports_for(x))
+                }
+                out.append(&mut Class::collect_imports_for(&*return_type))
+            }
+            _ => {}
+        }
+        out
+    }
+
+    pub fn collect_imports(&self) -> Vec<Import> {
+        let mut out = Vec::new();
+        for field in &self.fields {
+            out.append(&mut Class::collect_imports_for(&field.descriptor))
+        }
+        for method in &self.methods {
+            out.append(&mut Class::collect_imports_for(&method.descriptor))
+        }
+        out
+    }
 }
 
 pub const CLASS_SIGNATURE: u32 = 0xCAFEBABE;
@@ -37,7 +82,7 @@ impl Readable for Class {
         let minor_version = u16::read(i)?;
         let major_version = u16::read(i)?;
         let constant_pool = <ConstantPool>::read(i)?;
-        let access_flags = AccessFlags( u16::read(i)?);
+        let access_flags = AccessFlags(u16::read(i)?);
 
         let class_name_index = u16::read(i)?;
         let class_name = constant_pool.get_class_path(class_name_index)?
@@ -57,13 +102,13 @@ impl Readable for Class {
         }
 
         let fields_count = u16::read(i)? as usize;
-        let mut fields = Vec::with_capacity(fields_count );
+        let mut fields = Vec::with_capacity(fields_count);
         for _ in 0..fields_count {
             fields.push(Member::read(i, &constant_pool)?);
         }
 
         let methods_count = u16::read(i)? as usize;
-        let mut methods = Vec::with_capacity(methods_count );
+        let mut methods = Vec::with_capacity(methods_count);
         for _ in 0..methods_count {
             methods.push(Member::read(i, &constant_pool)?);
         }
@@ -85,7 +130,7 @@ impl Readable for Class {
             interfaces,
             fields,
             methods,
-            attributes
+            attributes,
         });
     }
 }

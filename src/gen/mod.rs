@@ -5,7 +5,7 @@ use anyhow::Result;
 
 use crate::class::class::Class;
 use crate::class::constants::{ACC_ANNOTATION, ACC_ENUM, ACC_FINAL, ACC_INTERFACE, ACC_PRIVATE, ACC_PROTECTED, ACC_PUBLIC, ACC_STATIC};
-use crate::class::descriptor::{Descriptor};
+use crate::class::descriptor::Descriptor;
 use crate::class::member::Member;
 
 mod core;
@@ -19,6 +19,16 @@ impl ClassWriter {
         if !package_path.is_empty() {
             write!(o, "package {};\n\n", package_path)?;
         }
+
+        let imports = class.collect_imports();
+        if !imports.is_empty() {
+            for import in imports {
+                let package = import.package.join(".");
+                write!(o, "import {}.{};\n", package, import.name)?;
+            }
+            write!(o, "\n")?;
+        }
+
 
         if class.access_flags.contains(ACC_PUBLIC) {
             write!(o, "public ")?;
