@@ -2,6 +2,7 @@ use std::io::{Cursor, Read};
 
 use anyhow::{anyhow, Context, Result};
 
+use crate::class::attribute::AttributeValue::SourceDebugExtension;
 use crate::class::constant::{Constant, ConstantPool};
 use crate::io::{read_byte_vec, read_vec_from, Readable};
 use crate::rstruct;
@@ -58,23 +59,17 @@ pub struct Attribute {
     pub value: AttributeValue,
 }
 
-pub struct CodeAttr {
-    max_stack: u16,
-    max_locals: u16,
-    code: Vec<u8>,
-    exception_table: Vec<ExceptionTableEntry>,
-    attributes: Vec<Attribute>,
-}
-
-pub struct EnclosingMethodAttr {
-    class_index: u16,
-    method_index: u16,
-}
 
 pub enum AttributeValue {
     // value_index
     ConstantValue(u16),
-    Code(CodeAttr),
+    Code {
+        max_stack: u16,
+        max_locals: u16,
+        code: Vec<u8>,
+        exception_table: Vec<ExceptionTableEntry>,
+        attributes: Vec<Attribute>,
+    },
     Exceptions(Vec<u16>),
     // source-file_index
     SourceFile(u16),
@@ -83,10 +78,13 @@ pub enum AttributeValue {
     InnerClasses(Vec<InnerClass>),
     Synthetic,
     Depreciated,
-    EnclosingMethod(EnclosingMethodAttr),
+    EnclosingMethod {
+        class_index: u16,
+        method_index: u16,
+    },
     // signature_index
     Signature(String),
-    SourceDebugExtension,
+    SourceDebugExtension(Vec<u8>),
     LocalVariableTypeTable(Vec<LocalVariableType>),
     RuntimeVisibleAnnotations,
     RuntimeInvisibleAnnotations,
@@ -98,6 +96,7 @@ pub enum AttributeValue {
     RuntimeVisibleTypeAnnotations,
     RuntimeInvisibleTypeAnnotations,
     MethodParameters(Vec<MethodParameter>),
+    Unknown(Vec<u8>),
 }
 
 impl AttributeValue {
@@ -107,7 +106,6 @@ impl AttributeValue {
         constant_pool: &ConstantPool,
     ) -> Result<AttributeValue> {
         let c = &mut Cursor::new(data);
-
         Ok(match name {
             "Code" => {
                 let max_stack = u16::read(c)?;
@@ -118,19 +116,19 @@ impl AttributeValue {
 
                 let exception_table_length = u16::read(c)? as usize;
                 let exception_table =
-                    read_vec_from::<ExceptionTableEntry, Cursor<&[u8]>>(c, exception_table_length)?;
+                    read_vec_from(c, exception_table_length)?;
 
                 let attributes_count = u16::read(c)? as usize;
                 let attributes =
-                    read_vec_from::<Attribute, Cursor<&[u8]>>(c, attributes_count)?;
+                    read_vec_from(c, attributes_count)?;
 
-                AttributeValue::Code(CodeAttr {
+                AttributeValue::Code {
                     max_stack,
                     max_locals,
                     code,
                     exception_table,
                     attributes,
-                })
+                }
             }
             "ConstantValue" => AttributeValue::ConstantValue(u16::read(c)?),
             "Deprecated" => AttributeValue::Depreciated,
@@ -143,7 +141,7 @@ impl AttributeValue {
             "InnerClasses" => {
                 let classes_count = u16::read(c)? as usize;
                 let classes =
-                    read_vec_from::<InnerClass, Cursor<&[u8]>>(c, classes_count)?;
+                    read_vec_from(c, classes_count)?;
                 AttributeValue::InnerClasses(classes)
             }
             "Signature" => {
@@ -152,10 +150,34 @@ impl AttributeValue {
                     .get(&id)
                     .ok_or(anyhow!("missing constant value {}", id))?
                 {
-                    Constant::Utf8(value) => AttributeValue::Signature(value.clone())m,
+                    Constant::Utf8(value) => AttributeValue::Signature(value.clone()),
                     _ => Err(anyhow!("invalid signature constant. wasn't utf8"))
                 }
             }
+            "SourceDebugExtension" => SourceDebugExtension(data.to_vec()),
+            "LineNumberTable" => {
+                let ln_table_count = u16::read(c)? as usize;
+                let table = read_vec_from(c, ln_table_count)?;
+                AttributeValue::LineNumberTable(table)
+            }
+            "LocalVariableTable" => {
+                let lv_table_count = u16::read(c)? as usize;
+                let table = read_vec_from(c, lv_table_count)?;
+                AttributeValue::LocalVariableTable(table)
+            }
+            "SourceFile" => AttributeValue::SourceFile(u16::read(c)?),
+            "Synthetic" => AttributeValue::Synthetic,
+            "AnnotationDefault" => AttributeValue::AnnotationDefault(data.to_vec()),
+            "EnclosingMethod" => AttributeValue::EnclosingMethod {
+                class_index: u16::read(c)?,
+                method_index: u16::read(c)?,
+            },
+            "LocalVariableTypeTable" => {
+                let lvt_table_count = u16::read(c)? as usize;
+                let table = read_vec_from(c, lvt_table_count)?;
+                AttributeValue::LocalVariableTable(table)
+            }
+            _ => AttributeValue::Unknown(data.to_vec())
         })
     }
 }
