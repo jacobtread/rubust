@@ -5,7 +5,7 @@ use anyhow::Result;
 
 use crate::class::class::Class;
 use crate::class::constants::{ACC_ANNOTATION, ACC_ENUM, ACC_FINAL, ACC_INTERFACE, ACC_PRIVATE, ACC_PROTECTED, ACC_PUBLIC, ACC_STATIC};
-use crate::class::descriptor::{Descriptor, real_name};
+use crate::class::descriptor::{Descriptor};
 use crate::class::member::Member;
 
 mod core;
@@ -114,7 +114,7 @@ impl ClassWriter {
                 self.write_descriptor(&*descriptor, o)?;
                 write!(o, "{}", "[]".repeat(*dimensions as usize))?;
             }
-            Descriptor::ClassReference(class) => write!(o, "{}", real_name(class))?,
+            Descriptor::ClassReference(class) => write!(o, "{}", class.name)?,
             _ => write!(o, "/* Failed to parse type*/")?,
         }
 

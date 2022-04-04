@@ -1,6 +1,8 @@
 use std::env::var;
 use std::path::Display;
 
+use crate::class::class::ClassPath;
+
 #[derive(Debug, Clone)]
 pub enum Descriptor {
     Byte,
@@ -9,7 +11,7 @@ pub enum Descriptor {
     Float,
     Int,
     Long,
-    ClassReference(String),
+    ClassReference(ClassPath),
     Short,
     Boolean,
     Array {
@@ -24,13 +26,6 @@ pub enum Descriptor {
     Unknown(String),
 }
 
-pub fn is_internal(value: &String) -> bool {
-    value.starts_with("java/lang/")
-}
-
-pub fn real_name(value: &String) -> String {
-    String::from(value.trim_start_matches("java/lang/"))
-}
 
 impl Descriptor {
     pub fn parse(value: &str) -> Descriptor {
@@ -46,7 +41,7 @@ impl Descriptor {
                 if value.starts_with('L') {
                     let mut name = value.split_at(value.len() - 1);
                     name = name.0.split_at(1);
-                    Descriptor::ClassReference(String::from(name.1))
+                    Descriptor::ClassReference(ClassPath::from_string(name.1))
                 } else if value.starts_with('[') {
                     let name = value.trim_start_matches("[");
                     let dimensions = (value.len() - name.len()) as u8;
