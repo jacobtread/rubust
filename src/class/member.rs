@@ -1,26 +1,28 @@
 use std::io::Read;
+
 use crate::class::attribute::Attribute;
 use crate::class::constant::ConstantPool;
+use crate::class::constants::AccessFlags;
 use crate::io::Readable;
 
 #[derive(Debug, Clone)]
 pub struct Member {
-    pub access_flags: u16,
+    pub access_flags: AccessFlags,
     pub name: String,
     pub descriptor: String,
-    pub attributes: Vec<Attribute>
+    pub attributes: Vec<Attribute>,
 }
 
 impl Member {
     pub fn is_constructor(&self) -> bool {
-        self.name == "<init>"
+        self.name == String::from("<init>")
     }
 
     pub fn read<B: Read>(
         i: &mut B,
-        constant_pool: &ConstantPool
+        constant_pool: &ConstantPool,
     ) -> anyhow::Result<Self> where Self: Sized {
-        let access_flags = u16::read(i)?;
+        let access_flags = AccessFlags(u16::read(i)?);
         let name_index = u16::read(i)?;
         let name = constant_pool.get_string(name_index)?;
 
@@ -37,7 +39,7 @@ impl Member {
             access_flags,
             name,
             descriptor,
-            attributes
+            attributes,
         })
     }
 }

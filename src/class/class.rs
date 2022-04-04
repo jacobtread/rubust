@@ -5,6 +5,7 @@ use anyhow::{anyhow, Result};
 use crate::class::attribute::Attribute;
 
 use crate::class::constant::ConstantPool;
+use crate::class::constants::AccessFlags;
 use crate::class::member::Member;
 use crate::io::Readable;
 
@@ -16,7 +17,7 @@ pub struct Class {
     pub magic_number: u32,
     pub version: Version,
     pub constant_pool: ConstantPool,
-    pub access_flags: u16,
+    pub access_flags: AccessFlags,
     pub class_name: ClassPath,
     pub super_name: Option<ClassPath>,
     pub interfaces: Vec<ClassPath>,
@@ -36,7 +37,7 @@ impl Readable for Class {
         let minor_version = u16::read(i)?;
         let major_version = u16::read(i)?;
         let constant_pool = <ConstantPool>::read(i)?;
-        let access_flags = u16::read(i)?;
+        let access_flags = AccessFlags( u16::read(i)?);
 
         let class_name_index = u16::read(i)?;
         let class_name = constant_pool.get_class_path(class_name_index)?

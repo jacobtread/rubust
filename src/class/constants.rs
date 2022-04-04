@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+
 pub const BYTECODE_JAVA_LE_4: u8 = 48;
 pub const BYTECODE_JAVA_5: u8 = 49;
 pub const BYTECODE_JAVA_6: u8 = 50;
@@ -63,6 +64,15 @@ pub const ACC_MANDATED: u16 = 0x8000;
 pub const ACC_MODULE: u16 = 0x8000;
 pub const ACC_SUPER: u16 = 0x0020;
 pub const ACC_INTERFACE: u16 = 0x0200;
+
+#[derive(Debug, Clone)]
+pub struct AccessFlags(pub u16);
+
+impl AccessFlags {
+    pub fn contains(&self, flag: u16) -> bool {
+        self.0.clone() & flag == flag
+    }
+}
 
 
 pub const GROUP_GENERAL: u8 = 1;
