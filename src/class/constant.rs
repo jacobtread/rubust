@@ -30,13 +30,21 @@ impl ConstantPool {
             None
         })
     }
-}
 
-impl ConstantPool {
-    fn new(size: usize) -> Self {
+    pub fn new(size: usize) -> Self {
         return ConstantPool {
             values: HashMap::with_capacity(size)
         };
+    }
+
+    pub fn get_string(&self, index: u16) -> Result<String> {
+        return Ok(match self.values.get(&index) {
+            None => Err(anyhow!("expected utf8 constant at {} but nothing was found", index))?,
+            Some(c) => match c {
+                Constant::Utf8(x) => x.clone(),
+                _ => Err(anyhow!("expected utf8 constant at {}", index))?,
+            }
+        });
     }
 }
 
@@ -167,6 +175,7 @@ impl Readable for Constant {
         )
     }
 }
+
 
 impl Readable for ConstantPool {
     fn read<B: Read>(i: &mut B) -> Result<Self> where Self: Sized {

@@ -59,6 +59,25 @@ pub struct Attribute {
     pub value: AttributeValue,
 }
 
+impl Attribute {
+    pub fn read<B: Read>(
+        i: &mut B,
+        constant_pool: &ConstantPool,
+    ) -> Result<Self> where Self: Sized {
+        let name_index = u16::read(i)?;
+        let name = constant_pool.get_string(name_index)?;
+        let length = u32::read(i)? as usize;
+        let data = read_byte_vec(i, length)?;
+        Ok(Attribute {
+            name: name.clone(),
+            value: AttributeValue::from_name(
+                name.as_str(),
+                data.as_slice(),
+                constant_pool,
+            )?,
+        })
+    }
+}
 
 pub enum AttributeValue {
     // value_index
