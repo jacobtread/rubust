@@ -1,9 +1,9 @@
 use std::io::{Cursor, Read};
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 
 use crate::class::attribute::AttributeValue::SourceDebugExtension;
-use crate::class::constant::{Constant, ConstantPool};
+use crate::class::constant::ConstantPool;
 use crate::io::{read_byte_vec, read_vec_from, Readable};
 use crate::rstruct;
 
@@ -64,7 +64,6 @@ impl Attribute {
         let name = constant_pool.get_string(name_index)?;
         let length = u32::read(i)? as usize;
         let data = read_byte_vec(i, length)?;
-        println!("{}", name);
         Ok(Attribute {
             name: name.clone(),
             value: AttributeValue::from_name(

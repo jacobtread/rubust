@@ -90,7 +90,7 @@ impl Readable for Class {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ClassPath {
     pub package: Vec<String>,
     pub outer_classes: Vec<String>,
