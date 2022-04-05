@@ -1,4 +1,4 @@
-use std::io::Write;
+use std::io::{Cursor, stdout, Write};
 
 use anyhow::{anyhow, Result};
 
@@ -7,10 +7,10 @@ use crate::class::class::Class;
 use crate::class::constants::{ACC_ANNOTATION, ACC_ENUM, ACC_FINAL, ACC_INTERFACE, ACC_PRIVATE, ACC_PROTECTED, ACC_PUBLIC, ACC_STATIC, AccessFlags};
 use crate::class::descriptor::Descriptor;
 use crate::class::member::Member;
-use crate::class::op::OpCodes;
+use crate::class::op::{Instruction, OpCodes};
+use crate::io::Readable;
 
 mod core;
-
 
 pub struct ClassWriter {}
 
@@ -41,6 +41,7 @@ impl ClassWriter {
         } else {
             write!(o, "class ")?;
         }
+
 
         let class_name = class.class_name.clone();
         write!(o, "{} ", class_name.name)?;
@@ -136,17 +137,15 @@ impl ClassWriter {
     }
 
     pub fn write_code<B: Write>(&self, class: &Class, code_attr: &CodeAttr, o: &mut B) -> Result<()> {
-        let mut pos = 0;
         let code = &code_attr.code;
-        while pos < code.len() {
-            let instr = OpCodes::try_from(code[pos]).unwrap();
-            write!(o, "      {}", instr.get_name())?;
-            let argc = instr.get_argc();
-            for offset in 0..argc {
-                write!(o, " {}", code[pos + offset])?;
+        let mut c = Cursor::new(code);
+        while (c.position() as usize) < code.len() {
+            let instr = Instruction::read(&mut c)?;
+            write!(o, "      {}", instr.op.get_name())?;
+            for x in instr.args {
+                write!(o, " {}", x)?;
             }
             writeln!(o)?;
-            pos += 1 + argc;
         }
         Ok(())
     }
@@ -161,10 +160,9 @@ impl ClassWriter {
         let c = method.is_constructor();
         if c {
             write!(o, "{}(", class.class_name.name)?;
-            println!("{:?}", class);
         } else {
             self.write_descriptor(&*desc.return_type, o)?;
-            write!(o, " {}(", method.name);
+            write!(o, " {}(", method.name)?;
         }
 
         let mut p_num = 0;

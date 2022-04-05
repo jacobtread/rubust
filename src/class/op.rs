@@ -1,7 +1,5 @@
-use std::fmt::{Display, Formatter, write};
+use std::fmt::{Display, Formatter};
 use std::io::Read;
-
-use regex::internal::Inst;
 
 use crate::io::{read_byte_vec, Readable};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
@@ -14,6 +12,7 @@ macro_rules! define_op_codes {
     ) => {
         #[derive(Debug, Copy, Clone, Eq, PartialEq, IntoPrimitive, TryFromPrimitive)]
         #[repr(u8)]
+        #[allow(dead_code, non_camel_case_types)]
         pub enum OpCodes {
             $($enum_value = $op_code,)*
         }
@@ -22,7 +21,6 @@ macro_rules! define_op_codes {
             pub fn get_name(&self) -> &'static str {
                 match self {
                     $(OpCodes::$enum_value => $name,)*
-                    _ => "unknown_opcode"
                 }
             }
 

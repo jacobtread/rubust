@@ -1,10 +1,13 @@
+extern crate core;
+
 pub mod io;
 pub mod class;
 pub mod gen;
+pub mod decomp;
 
 #[cfg(test)]
 mod tests {
-    use std::io::{Cursor, stdout, Write};
+    use std::io::{Cursor, stdout};
 
     use crate::class::class::Class;
     use crate::gen::ClassWriter;
@@ -20,10 +23,9 @@ mod tests {
                 // println!("{:#?}", t.methods[1]);
 
                 let w = ClassWriter {};
-                w.write_class(&t, &mut stdout());
-                stdout().flush();
+                w.write_class(&t, &mut stdout()).expect("errrrrrr");
             }
-            Err(t) => {}
+            Err(_) => {}
         }
 
     }

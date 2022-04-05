@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::io::Read;
+use std::io::{Read, Write};
 
 use anyhow::{anyhow, Result};
 
@@ -14,6 +14,16 @@ pub struct ConstantPool {
 
 
 impl ConstantPool {
+    pub fn dump_to<B: Write>(&self, o: &mut B) -> Result<()> {
+        let mut keys = self.values.keys().collect::<Vec<&u16>>();
+        keys.sort();
+        for key in keys {
+            let v = self.values.get(key).expect("missing value");
+            write!(o, "{}: {:?}\n", key, v)?;
+        }
+        Ok(())
+    }
+
     pub fn get_class_path(&self, index: u16) -> Result<Option<ClassPath>> {
         Ok(if index != 0 {
             match self.values.get(&index) {
