@@ -1,3 +1,4 @@
+
 public class Everything {
 
     public String returnStr() {

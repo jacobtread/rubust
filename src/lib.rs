@@ -1,32 +1,18 @@
-extern crate core;
-
+///! This is a rust library for working with Java class files
 pub mod io;
-pub mod class;
-pub mod gen;
-pub mod decomp;
+pub mod error;
+mod class;
 
 #[cfg(test)]
 mod tests {
-    use std::io::{Cursor, stdout};
-
-    use crate::class::class::Class;
-    use crate::gen::ClassWriter;
+    use std::io::Cursor;
     use crate::io::Readable;
 
     #[test]
-    fn it_works() {
-        let mut bytes = include_bytes!("../Test.class");
-        let mut cursor = Cursor::new(&mut bytes);
-        let out = Class::read(&mut cursor);
-        match out {
-            Ok(t) => {
-                // println!("{:#?}", t.methods[1]);
-
-                let w = ClassWriter {};
-                w.write_class(&t, &mut stdout()).expect("errrrrrr");
-            }
-            Err(_) => {}
-        }
-
+    fn io_works() {
+        let mut arr = vec![1u8, 0, 5];
+        let mut cursor = Cursor::new(arr);
+        let a = u16::read(&mut cursor).expect("Value exist");
+        println!("{}", a)
     }
 }

@@ -1,137 +1,83 @@
-use std::io::{Read, Write};
+use std::io;
+use std::io::Read;
 
-use anyhow::{Context, Result};
-use byteorder::{BE, ReadBytesExt, WriteBytesExt};
+use byteorder::{BigEndian, ReadBytesExt};
+use paste::paste;
+
+use crate::error::ReadError;
+
+type ReadResult<A> = Result<A, ReadError>;
 
 pub trait Readable: Send + Sync {
-    fn read<B: Read>(i: &mut B) -> Result<Self> where Self: Sized;
-}
-
-pub trait Writable: Send + Sync {
-    fn write<B: Write>(&mut self, o: &mut B) -> Result<()>;
-}
-
-impl Writable for u8 {
-    fn write<B: Write>(&mut self, o: &mut B) -> Result<()> {
-        o.write_u8(*self)?;
-        Ok(())
-    }
+    fn read<R: Read>(i: &mut R) -> ReadResult<Self> where Self: Sized;
 }
 
 impl Readable for u8 {
-    fn read<B: Read>(i: &mut B) -> Result<Self> where Self: Sized {
-        B::read_u8(i).map_err(anyhow::Error::from)
-    }
-}
-
-impl Writable for i8 {
-    fn write<B: Write>(&mut self, o: &mut B) -> Result<()> {
-        o.write_i8(*self)?;
-        Ok(())
+    fn read<R: Read>(i: &mut R) -> ReadResult<Self> where Self: Sized {
+        i.read_u8().map_err(ReadError::from)
     }
 }
 
 impl Readable for i8 {
-    fn read<B: Read>(i: &mut B) -> Result<Self> where Self: Sized {
-        B::read_i8(i).map_err(anyhow::Error::from)
+    fn read<R: Read>(i: &mut R) -> ReadResult<Self> where Self: Sized {
+        i.read_i8().map_err(ReadError::from)
     }
 }
 
-macro_rules! generate_rw {
+trait ReadByteVecExt: io::Read {
+    #[inline]
+    fn read_bytes_vec(&mut self, length: usize) -> ReadResult<Vec<u8>> {
+        let mut buffer = Vec::with_capacity(length);
+        unsafe { buffer.set_len(length) }
+        self.read_exact(&mut buffer).map_err(ReadError::from)?;
+        Ok(buffer)
+    }
+}
+
+trait ReadVecExt: io::Read {
+    #[inline]
+    fn read_vec<C: Readable>(&mut self, length: usize) -> ReadResult<Vec<u8>> {
+        let mut out = Vec::with_capacity(length);
+        for _ in 0..length {
+            out.push(C::read(self)?)
+        }
+        Ok(out)
+    }
+}
+
+impl<R: io::Read> ReadByteVecExt for R {}
+impl<R: io::Read> ReadVecExt for R {};
+
+// Macro for implementing the readable trait on numbers
+// that support the BigEndian encoding.
+macro_rules! be_readable {
     (
-        $($type:ident: ($read_fn:ident, $write_fn:ident))*
+        $($type:ident ($fn:ident)),*
     ) => {
         $(
-            impl Writable for $type {
-                fn write<B: Write>(&mut self, o: &mut B) -> Result<()> {
-                    o.$write_fn::<BE>(*self)?;
-                    Ok(())
-                }
-            }
-
             impl Readable for $type {
-                fn read<B: Read>(i: &mut B) -> Result<Self> where Self: Sized {
-                    i.$read_fn::<BE>()
-                        .map_err(anyhow::Error::from)
+                fn read<R: Read>(i: &mut R) -> ReadResult<Self> where Self: Sized {
+                     i.$fn::<BigEndian>().map_err(ReadError::from)
                 }
             }
         )*
     };
 }
 
-generate_rw! {
-    u16: (read_u16, write_u16)
-    u32: (read_u32, write_u32)
-    u64: (read_u64, write_u64)
-
-    i16: (read_i16, write_i16)
-    i32: (read_i32, write_i32)
-    i64: (read_i64, write_i64)
-
-    f32: (read_f32, write_f32)
-    f64: (read_f64, write_f64)
-}
-
+be_readable!(
+    u16 (read_u16), u32 (read_u32),
+    i16 (read_i16), i32 (read_i32),
+    f32 (read_f32), f64 (read_f64)
+);
 
 impl Readable for String {
-    fn read<B: Read>(i: &mut B) -> Result<Self> where Self: Sized {
-        let length = <u16>::read(i)? as usize;
-        let bytes = read_byte_vec(i, length)?;
+    fn read<R: Read>(i: &mut R) -> ReadResult<Self> where Self: Sized {
+        let length = u16::read(i)? as usize;
+        let bytes = i.read_bytes_vec(length)?;
         Ok(
             String::from_utf8(bytes)
-                .context("string contained invalid utf-8 encoding")?
+                .map_err(ReadError::from)?
         )
     }
 }
 
-impl Writable for String {
-    fn write<B: Write>(&mut self, o: &mut B) -> Result<()> {
-        (self.len() as u16).write(o)?;
-        o.write_all(self.as_bytes())?;
-        Ok(())
-    }
-}
-
-#[inline]
-pub fn read_byte_vec<B: Read>(i: &mut B, length: usize) -> Result<Vec<u8>> {
-    let mut bytes = Vec::with_capacity(length);
-    unsafe { bytes.set_len(length) }
-    i.read_exact(&mut bytes)
-        .map_err(anyhow::Error::from)?;
-    Ok(bytes)
-}
-
-pub fn read_vec_from<C: Readable, B: Read>(i: &mut B, length: usize) -> Result<Vec<C>> {
-    let mut out = Vec::with_capacity(length);
-    for _ in 0..length {
-        out.push(C::read(i)?)
-    }
-    Ok(out)
-}
-
-#[macro_export]
-macro_rules! rstruct {
-    (
-        $(
-            $name:ident {
-                $($field:ident: $type:ty),* $(,)?
-            }
-        )*
-    ) => {
-        $(
-            #[derive(Debug, Clone)]
-            #[allow(dead_code)]
-            pub struct $name {
-                $($field: $type),*
-            }
-
-            impl $crate::io::Readable for $name {
-                fn read<B: std::io::Read>(i: &mut B) -> anyhow::Result<Self> where Self: Sized {
-                    Ok(Self {
-                        $($field: <$type>::read(i)?,)*
-                    })
-                }
-            }
-        )*
-    };
-}
