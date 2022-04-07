@@ -1,8 +1,9 @@
 use std::fmt::{Display, Formatter};
-use std::io::Read;
+use std::io::{Cursor, Read};
 
 use crate::io::{read_byte_vec, Readable};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
+use regex::internal::Inst;
 
 macro_rules! define_op_codes {
     (
@@ -252,6 +253,10 @@ impl Display for OpCodes {
 pub struct Instruction {
     pub op: OpCodes,
     pub args: Vec<u8>,
+}
+
+struct InstrReadable {
+
 }
 
 impl Readable for Instruction {
