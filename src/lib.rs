@@ -6,18 +6,16 @@ mod class;
 #[cfg(test)]
 mod tests {
     use std::io::Cursor;
+    use crate::class::class::Class;
 
-    use crate::class::constant::ConstantValue;
-    use crate::io::{Readable, ReadResult};
+    use crate::io::{Readable};
 
     #[test]
     fn io_works() {
-        let mut arr = vec![1u8, 3, 2, 23, 2, 2, 32, 3, 13, 21];
+        let arr = include_bytes!("../Test.class");
 
         let mut cursor = Cursor::new(arr);
-        let v = u8::read(&mut cursor).expect("");
-        println!("{}",v);
-        let v = ConstantValue::read(&mut cursor);
+        let v =Class::read(&mut cursor);
         match v {
             Ok(value) => {
                 println!("{:?}", value)

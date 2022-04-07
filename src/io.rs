@@ -2,7 +2,6 @@ use std::io;
 use std::io::Read;
 
 use byteorder::{BigEndian, ReadBytesExt};
-use paste::paste;
 
 use crate::error::ReadError;
 

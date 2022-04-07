@@ -1,6 +1,69 @@
 use std::fmt::{Display, Formatter};
+use std::io::Read;
+
+use num_enum::{IntoPrimitive, TryFromPrimitive};
+
+use crate::class::constant::ConstantPool;
+use crate::error::ReadError;
+use crate::io::{Readable, ReadResult};
+
+#[derive(Debug)]
+pub struct SourceVersion {
+    minor: u16,
+    major: MajorVersion,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, IntoPrimitive, TryFromPrimitive)]
+#[repr(u16)]
+pub enum MajorVersion {
+    JavaLE4 = 48,
+    Java5 = 49,
+    Java6 = 50,
+    Java7 = 51,
+    Java8 = 52,
+    Java9 = 53,
+    Java10 = 54,
+    Java11 = 55,
+    Java12 = 56,
+    Java13 = 57,
+    Java14 = 58,
+    Java15 = 59,
+    Java16 = 60,
+    Java17 = 61,
+    #[num_enum(default)]
+    Unknown,
+}
 
 pub const CLASS_SIGNATURE: u32 = 0xCAFEBABE;
+
+#[derive(Debug)]
+pub struct Class {
+    pub version: SourceVersion,
+    pub constant_pool: ConstantPool,
+}
+
+impl Readable for Class {
+    fn read<R: Read>(i: &mut R) -> ReadResult<Self> where Self: Sized {
+        let magic_number = u32::read(i)?;
+        if magic_number != CLASS_SIGNATURE {
+            Err(ReadError::InvalidMagic(magic_number))?;
+        }
+
+        let minor_version = u16::read(i)?;
+        let major_version = MajorVersion::try_from(u16::read(i)?)
+            .unwrap_or(MajorVersion::Unknown);
+
+        let version = SourceVersion { minor: minor_version, major: major_version };
+        let constant_pool = ConstantPool::read(i)?;
+
+        Ok(Class {
+            version,
+            constant_pool,
+        })
+    }
+}
+
 
 /// Represents a path to a class includes outer classes,
 /// the packages list and the class name
@@ -11,8 +74,8 @@ pub struct ClassPath {
     pub outer_classes: Vec<String>,
 }
 
-impl From<&str> for ClassPath {
-    fn from(value: &str) -> Self {
+impl From<&String> for ClassPath {
+    fn from(value: &String) -> Self {
         // Package components are split using slashes
         let mut package: Vec<String> = value.split('/')
             .map(|s| s.to_string())
@@ -36,18 +99,21 @@ impl ClassPath {
     pub fn jar_path(&self) -> String {
         let mut out = self.package_str();
         if !self.outer_classes.is_empty() {
-            out += self.outer_classes.join("$").as_str() + "$"
+            out += self.outer_classes.join("$").as_str();
+            out += "$";
         }
-        out += self.name.as_str() + ".class";
+        out += self.name.as_str();
+        out += ".class";
         out
     }
     pub fn full_path(&self) -> String {
         let mut out = self.package_str();
         if !out.is_empty() {
-            out += "."
+            out += ".";
         }
         if !self.outer_classes.is_empty() {
-            out += self.outer_classes.join(".").as_str() + "."
+            out += self.outer_classes.join(".").as_str();
+            out += ".";
         }
         out += self.name.as_str();
         out

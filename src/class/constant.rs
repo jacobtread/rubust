@@ -1,11 +1,10 @@
 use std::collections::HashMap;
-use std::fmt::Write;
+use std::fmt::{Debug, Formatter, Write};
 use std::io::Read;
 
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 
 use crate::class::class::ClassPath;
-use crate::class::constant::ConstantTag::Package;
 use crate::error::ConstantError;
 use crate::error::ReadError::UnknownConstantTag;
 use crate::io::{Readable, ReadResult};
@@ -17,8 +16,39 @@ use crate::readable_struct;
 /// being blank.
 pub type PoolIndex = u16;
 
-struct ConstantPool {
-    inner: HashMap<PoolIndex, Constant>,
+pub struct ConstantPool {
+    pub inner: HashMap<PoolIndex, Constant>,
+}
+
+impl Debug for ConstantPool {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        if f.alternate() {
+            f.write_str("ConstantPool {\n");
+            let mut keys: Vec<&u16> = self.inner.keys().collect();
+            keys.sort(); // Obtain a sorted version of the keys
+            for key in keys{
+                let v = self.inner.get(key)
+                    .expect("expected constant pool to contain index");
+                write!(f, "  {}: {:?},\n", key, v);
+            }
+            f.write_str("}");
+        } else {
+            f.write_str("ConstantPool { ");
+            let mut keys: Vec<&u16> = self.inner.keys().collect();
+            keys.sort(); // Obtain a sorted version of the keys
+            let last = keys.len() - 1;
+            for (index, key) in keys.iter().enumerate() {
+                let v = self.inner.get(key)
+                    .expect("expected constant pool to contain index");
+                write!(f, "{}: {:?}", key, v);
+                if index != last {
+                    f.write_str(", ");
+                }
+            }
+            f.write_str(" }");
+        }
+        Ok(())
+    }
 }
 
 impl Readable for ConstantPool {
@@ -46,29 +76,29 @@ impl ConstantPool {
         for key in keys {
             let v = self.inner.get(key)
                 .expect("expected constant pool to contain index");
-            write!(o, "{}: {:?}\n", key, v)?;
+            write!(o, "{}: {:?}\n", key, v);
         }
         Ok(())
     }
 
-    pub fn get_class_path(&self, index: &PoolIndex) -> Result<ClassPath, ConstantError> {
-        if index == 0 { return Err(ConstantError::NotFound(*index)); }
-        match self.inner.get(index) {
+    pub fn get_class_path(&self, index: PoolIndex) -> Result<ClassPath, ConstantError> {
+        if index == 0 { return Err(ConstantError::NotFound(index)); }
+        match self.inner.get(&index) {
             Some(constant) => match constant {
-                Constant::Class(v) => Ok(ClassPath::from(self.get_utf8(v)?)),
-                _ => Err(ConstantError::NotFound(*index))
+                Constant::Class(v) => Ok(ClassPath::from(self.get_utf8(*v)?)),
+                _ => Err(ConstantError::NotFound(index))
             }
-            None => Err(ConstantError::NotFound(*index))
+            None => Err(ConstantError::NotFound(index))
         }
     }
 
-    pub fn get_utf8(&self, index: &PoolIndex) -> Result<&String, ConstantError> {
-        match self.inner.get(index) {
+    pub fn get_utf8(&self, index: PoolIndex) -> Result<&String, ConstantError> {
+        match self.inner.get(&index) {
             Some(constant) => match constant {
                 Constant::Utf8(value) => Ok(value),
-                _ => Err(ConstantError::ExpectedUtf8(*index))
+                _ => Err(ConstantError::ExpectedUtf8(index))
             }
-            None => Err(ConstantError::NotFound(*index))
+            None => Err(ConstantError::NotFound(index))
         }
     }
 }
@@ -98,7 +128,7 @@ readable_struct! {
 #[allow(dead_code)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq, IntoPrimitive, TryFromPrimitive)]
 #[repr(u8)]
-enum ConstantTag {
+pub enum ConstantTag {
     Utf8 = 1,
     Integer = 3,
     Float = 4,

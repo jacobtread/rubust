@@ -3,7 +3,7 @@ use std::io;
 
 use thiserror::Error;
 
-use crate::class::constant::{Constant, PoolIndex};
+use crate::class::constant::PoolIndex;
 
 #[derive(Error, Debug)]
 pub enum ReadError {
@@ -13,15 +13,18 @@ pub enum ReadError {
     InvalidUtf8(#[from] std::string::FromUtf8Error),
     #[error("unknown constant tag {0}")]
     UnknownConstantTag(u8),
+    #[error("invalid class magic signature got 0x{0} expected 0xCAFEBABE")]
+    InvalidMagic(u32),
 }
 
+#[derive(Error, Debug)]
 pub enum ConstantError {
     #[error("no constant found in pool at index {0}")]
     NotFound(PoolIndex),
     #[error("expected value at index {0} to be utf-8")]
     ExpectedUtf8(PoolIndex),
-    #[error("expected value at index {0} to be class was {1} instead")]
+    #[error("expected value at index {0} to be class")]
     InvalidClassReference(PoolIndex),
-    #[error("expected value at index {0} to be utf-8 class name was {1} instead")]
+    #[error("expected value at index {0} to be utf-8 class name")]
     InvalidClassReference2(PoolIndex),
 }
