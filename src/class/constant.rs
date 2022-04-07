@@ -1,12 +1,12 @@
 use std::collections::HashMap;
 use std::io::Read;
-use crate::class::constant::ConstantTag::Package;
-use crate::error::ReadError::UnknownConstantTag;
-
-use crate::io::{Readable, ReadResult};
-use crate::readable_struct;
 
 use num_enum::{IntoPrimitive, TryFromPrimitive};
+
+use crate::class::constant::ConstantTag::Package;
+use crate::error::ReadError::UnknownConstantTag;
+use crate::io::{Readable, ReadResult};
+use crate::readable_struct;
 
 /// Represents an index in the pool.
 /// Note: not every index of the pool contains a constant. Some contents
@@ -18,6 +18,23 @@ struct ConstantPool {
     inner: HashMap<PoolIndex, Constant>,
 }
 
+impl Readable for ConstantPool {
+    fn read<R: Read>(i: &mut R) -> ReadResult<Self> where Self: Sized {
+        let size = u16::read(i)?;
+        let mut pool = ConstantPool { inner: HashMap::with_capacity(size as usize) };
+        let mut index = 1;
+        while index < size {
+            let value = ConstantValue::read(i)?;
+            pool.inner.insert(index, value.value);
+            // Long and Double constants consume two indexes worth of data
+            index += match value.tag {
+                ConstantTag::Long | ConstantTag::Double => 2,
+                _ => 1
+            }
+        }
+        Ok(pool)
+    }
+}
 
 readable_struct! {
     struct MemberReference {
@@ -123,8 +140,8 @@ pub struct ConstantValue {
 impl Readable for ConstantValue {
     fn read<R: Read>(i: &mut R) -> ReadResult<Self> where Self: Sized {
         let tag_raw = u8::read(i)?;
-        let tag =  ConstantTag::try_from(tag_raw)
-            .map_err(|_|UnknownConstantTag(tag_raw))?;
+        let tag = ConstantTag::try_from(tag_raw)
+            .map_err(|_| UnknownConstantTag(tag_raw))?;
         let value = match tag {
             ConstantTag::Utf8 => Constant::Utf8(String::read(i)?),
             ConstantTag::Integer => Constant::Integer(i32::read(i)?),
