@@ -5,8 +5,8 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 use crate::class::access::AccessFlags;
 
 use crate::class::constant::ConstantPool;
-use crate::error::ReadError;
-use crate::io::{Readable, ReadResult};
+use crate::error::{ConstantError, ReadError};
+use crate::io::{Readable, ReadResult, ReadVecExt};
 
 #[derive(Debug)]
 pub struct SourceVersion {
@@ -44,7 +44,8 @@ pub struct Class {
     pub constant_pool: ConstantPool,
     pub access_flags: AccessFlags,
     pub class_path: ClassPath,
-    pub super_class_path: Option<ClassPath>
+    pub super_class_path: Option<ClassPath>,
+    pub interfaces: Vec<ClassPath>
 }
 
 impl Readable for Class {
@@ -67,12 +68,24 @@ impl Readable for Class {
             .ok_or(ReadError::NoClassName)?;
         let super_class_path = constant_pool.get_class_path(u16::read(i)?)?;
 
+        let interface_count = u16::read(i)?;
+        let mut interfaces = Vec::with_capacity(interface_count as usize);
+
+        for _ in 0..interface_count {
+            let name_index = u16::read(i)?;
+            let name = constant_pool.get_class_path(name_index)?
+                .ok_or(ConstantError::InvalidClassReference(name_index))?;
+            interfaces.push(name)
+        }
+
+
         Ok(Class {
             version,
             constant_pool,
             access_flags,
             class_path,
-            super_class_path
+            super_class_path,
+            interfaces
         })
     }
 }

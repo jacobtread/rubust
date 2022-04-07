@@ -23,7 +23,7 @@ impl Readable for i8 {
     }
 }
 
-trait ReadByteVecExt: io::Read {
+pub trait ReadByteVecExt: io::Read {
     #[inline]
     fn read_bytes_vec(&mut self, length: usize) -> ReadResult<Vec<u8>> {
         let mut buffer = Vec::with_capacity(length);
@@ -33,7 +33,7 @@ trait ReadByteVecExt: io::Read {
     }
 }
 
-trait ReadVecExt: io::Read {
+pub trait ReadVecExt: io::Read {
     #[inline]
     fn read_vec<C: Readable>(&mut self, length: usize) -> ReadResult<Vec<C>> where Self: Sized {
         let mut out = Vec::with_capacity(length);

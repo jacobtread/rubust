@@ -16,6 +16,7 @@ mod tests {
 
         let mut cursor = Cursor::new(arr);
         let v =Class::read(&mut cursor);
+
         match v {
             Ok(value) => {
                 println!("{:#?}", value)
