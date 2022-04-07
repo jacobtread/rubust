@@ -6,6 +6,7 @@
 6: Utf8("()V")
 7: String(8)
 8: Utf8("")
+8: Utf8("")
 9: FieldRef(ClassItemRef { class_index: 10, name_and_type_info: 11 })
 10: Class(12)
 11: NameAndType(NameAndTypeConstant { name_index: 13, descriptor_index: 14 })

@@ -6,7 +6,7 @@ use paste::paste;
 
 use crate::error::ReadError;
 
-type ReadResult<A> = Result<A, ReadError>;
+pub type ReadResult<A> = Result<A, ReadError>;
 
 pub trait Readable: Send + Sync {
     fn read<R: Read>(i: &mut R) -> ReadResult<Self> where Self: Sized;
@@ -36,7 +36,7 @@ trait ReadByteVecExt: io::Read {
 
 trait ReadVecExt: io::Read {
     #[inline]
-    fn read_vec<C: Readable>(&mut self, length: usize) -> ReadResult<Vec<u8>> {
+    fn read_vec<C: Readable>(&mut self, length: usize) -> ReadResult<Vec<C>> where Self: Sized {
         let mut out = Vec::with_capacity(length);
         for _ in 0..length {
             out.push(C::read(self)?)
@@ -46,7 +46,8 @@ trait ReadVecExt: io::Read {
 }
 
 impl<R: io::Read> ReadByteVecExt for R {}
-impl<R: io::Read> ReadVecExt for R {};
+
+impl<R: io::Read> ReadVecExt for R {}
 
 // Macro for implementing the readable trait on numbers
 // that support the BigEndian encoding.
@@ -65,8 +66,9 @@ macro_rules! be_readable {
 }
 
 be_readable!(
-    u16 (read_u16), u32 (read_u32),
-    i16 (read_i16), i32 (read_i32),
+    i16 (read_i16), u16 (read_u16),
+    u32 (read_u32), i32 (read_i32),
+    i64 (read_i64), u64 (read_u64),
     f32 (read_f32), f64 (read_f64)
 );
 
@@ -81,3 +83,30 @@ impl Readable for String {
     }
 }
 
+#[macro_export]
+macro_rules! readable_struct {
+    (
+        $(
+            struct $name:ident {
+                $($field:ident: $type:ty,)*
+            }
+        )*
+    ) => {
+        $(
+            #[derive(Debug)]
+            #[allow(dead_code)]
+            pub struct $name {
+                pub $($field: $type,)*
+            }
+
+            impl Readable for $name {
+                fn read<R: Read>(i: &mut R) -> ReadResult<Self> where Self: Sized {
+                    Ok(Self {
+                        $($field: <$type>::read(i)?),*
+                    })
+                }
+            }
+
+        )*
+    };
+}

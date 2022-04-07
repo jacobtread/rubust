@@ -9,4 +9,6 @@ pub enum ReadError {
     IO(#[from] io::Error),
     #[error(transparent)]
     InvalidUtf8(#[from] std::string::FromUtf8Error),
+    #[error("unknown constant tag {0}")]
+    UnknownConstantTag(u8)
 }

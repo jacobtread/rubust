@@ -1,0 +1,150 @@
+use std::collections::HashMap;
+use std::io::Read;
+use crate::class::constant::ConstantTag::Package;
+use crate::error::ReadError::UnknownConstantTag;
+
+use crate::io::{Readable, ReadResult};
+use crate::readable_struct;
+
+use num_enum::{IntoPrimitive, TryFromPrimitive};
+
+/// Represents an index in the pool.
+/// Note: not every index of the pool contains a constant. Some contents
+/// span across multiple indexes in the pool resulting in some indexes
+/// being blank.
+pub type PoolIndex = u16;
+
+struct ConstantPool {
+    inner: HashMap<PoolIndex, Constant>,
+}
+
+
+readable_struct! {
+    struct MemberReference {
+        class_index: PoolIndex,
+        name_and_type_info: PoolIndex,
+    }
+
+    struct NameAndType {
+        name_index: PoolIndex,
+        descriptor_index: PoolIndex,
+    }
+
+    struct MethodHandle {
+        reference_kind: u8,
+        reference_index: PoolIndex,
+    }
+
+    struct DynamicConstant {
+        bootstrap_method_attr_index: PoolIndex,
+        name_and_type_index: PoolIndex,
+    }
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, IntoPrimitive, TryFromPrimitive)]
+#[repr(u8)]
+enum ConstantTag {
+    Utf8 = 1,
+    Integer = 3,
+    Float = 4,
+    Long = 5,
+    Double = 6,
+    Class = 7,
+    String = 8,
+    FieldRef = 9,
+    MethodRef = 10,
+    InterfaceMethodRef = 11,
+    NameAndType = 12,
+    MethodHandle = 15,
+    MethodType = 16,
+    Dynamic = 17,
+    InvokeDynamic = 18,
+    Module = 19,
+    Package = 20,
+}
+
+#[derive(Debug)]
+pub enum Constant {
+    Utf8(String),
+    Integer(i32),
+    Float(f32),
+    Long(i64),
+    Double(f64),
+    // Class contains a pool reference to a Utf8 Constant which is the name of the class.
+    Class(PoolIndex),
+    // Strings contain a pool reference to a Utf8 Constant which is the value of the string.
+    String(PoolIndex),
+    FieldRef(MemberReference),
+    MethodRef(MemberReference),
+    InterfaceMethodRef(MemberReference),
+    NameAndType(NameAndType),
+    MethodHandle(MethodHandle),
+    // MethodType contains a pool reference to a descriptor Ut8 constant
+    MethodType(PoolIndex),
+    Dynamic(DynamicConstant),
+    InvokeDynamic(DynamicConstant),
+    // Module contains a pool reference to a Utf8 Constant which  is the name of the module
+    Module(PoolIndex),
+    // Package contains a pool reference to a Utf8 Constant which  is the name of the module
+    Package(PoolIndex),
+}
+
+impl From<Constant> for ConstantTag {
+    fn from(value: Constant) -> Self {
+        match value {
+            Constant::Utf8 { .. } => ConstantTag::Utf8,
+            Constant::Integer { .. } => ConstantTag::Integer,
+            Constant::Float { .. } => ConstantTag::Float,
+            Constant::Long { .. } => ConstantTag::Long,
+            Constant::Double { .. } => ConstantTag::Double,
+            Constant::Class { .. } => ConstantTag::Class,
+            Constant::String { .. } => ConstantTag::String,
+            Constant::FieldRef { .. } => ConstantTag::FieldRef,
+            Constant::MethodRef { .. } => ConstantTag::MethodRef,
+            Constant::InterfaceMethodRef { .. } => ConstantTag::InterfaceMethodRef,
+            Constant::NameAndType { .. } => ConstantTag::NameAndType,
+            Constant::MethodHandle { .. } => ConstantTag::MethodHandle,
+            Constant::MethodType { .. } => ConstantTag::MethodType,
+            Constant::Dynamic { .. } => ConstantTag::Dynamic,
+            Constant::InvokeDynamic { .. } => ConstantTag::InvokeDynamic,
+            Constant::Module { .. } => ConstantTag::Module,
+            Constant::Package { .. } => ConstantTag::Package,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct ConstantValue {
+    tag: ConstantTag,
+    value: Constant,
+}
+
+impl Readable for ConstantValue {
+    fn read<R: Read>(i: &mut R) -> ReadResult<Self> where Self: Sized {
+        let tag_raw = u8::read(i)?;
+        let tag =  ConstantTag::try_from(tag_raw)
+            .map_err(|_|UnknownConstantTag(tag_raw))?;
+        let value = match tag {
+            ConstantTag::Utf8 => Constant::Utf8(String::read(i)?),
+            ConstantTag::Integer => Constant::Integer(i32::read(i)?),
+            ConstantTag::Float => Constant::Float(f32::read(i)?),
+            ConstantTag::Long => Constant::Long(i64::read(i)?),
+            ConstantTag::Double => Constant::Double(f64::read(i)?),
+            ConstantTag::Class => Constant::Class(PoolIndex::read(i)?),
+            ConstantTag::String => Constant::String(PoolIndex::read(i)?),
+            ConstantTag::FieldRef => Constant::FieldRef(MemberReference::read(i)?),
+            ConstantTag::MethodRef => Constant::MethodRef(MemberReference::read(i)?),
+            ConstantTag::InterfaceMethodRef => Constant::InterfaceMethodRef(MemberReference::read(i)?),
+            ConstantTag::NameAndType => Constant::NameAndType(NameAndType::read(i)?),
+            ConstantTag::MethodHandle => Constant::MethodHandle(MethodHandle::read(i)?),
+            ConstantTag::MethodType => Constant::MethodType(PoolIndex::read(i)?),
+            ConstantTag::Dynamic => Constant::Dynamic(DynamicConstant::read(i)?),
+            ConstantTag::InvokeDynamic => Constant::InvokeDynamic(DynamicConstant::read(i)?),
+            ConstantTag::Module => Constant::Module(PoolIndex::read(i)?),
+            ConstantTag::Package => Constant::Package(PoolIndex::read(i)?),
+        };
+        Ok(ConstantValue { tag, value })
+    }
+}
+
