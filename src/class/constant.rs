@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::fmt::{Debug, Formatter, Write};
+use std::fmt::{Debug, Formatter};
 use std::io::Read;
 
 use num_enum::{IntoPrimitive, TryFromPrimitive};
@@ -23,29 +23,29 @@ pub struct ConstantPool {
 impl Debug for ConstantPool {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         if f.alternate() {
-            f.write_str("ConstantPool {\n");
+            f.write_str("ConstantPool {\n")?;
             let mut keys: Vec<&u16> = self.inner.keys().collect();
             keys.sort(); // Obtain a sorted version of the keys
             for key in keys{
                 let v = self.inner.get(key)
                     .expect("expected constant pool to contain index");
-                write!(f, "  {}: {:?},\n", key, v);
+                f.write_str(format!("  {}: {:?}", key, v).as_str())?;
             }
-            f.write_str("}");
+            f.write_str("}")?;
         } else {
-            f.write_str("ConstantPool { ");
+            f.write_str("ConstantPool { ")?;
             let mut keys: Vec<&u16> = self.inner.keys().collect();
             keys.sort(); // Obtain a sorted version of the keys
             let last = keys.len() - 1;
             for (index, key) in keys.iter().enumerate() {
                 let v = self.inner.get(key)
                     .expect("expected constant pool to contain index");
-                write!(f, "{}: {:?}", key, v);
+                f.write_str(format!("{}: {:?}", key, v).as_str())?;
                 if index != last {
-                    f.write_str(", ");
+                    f.write_str(", ")?;
                 }
             }
-            f.write_str(" }");
+            f.write_str(" }")?;
         }
         Ok(())
     }
@@ -70,16 +70,6 @@ impl Readable for ConstantPool {
 }
 
 impl ConstantPool {
-    pub fn dump<W: Write>(&self, o: &mut W) -> Result<(), std::io::Error> {
-        let mut keys: Vec<&u16> = self.inner.keys().collect();
-        keys.sort(); // Obtain a sorted version of the keys
-        for key in keys {
-            let v = self.inner.get(key)
-                .expect("expected constant pool to contain index");
-            write!(o, "{}: {:?}\n", key, v);
-        }
-        Ok(())
-    }
 
     pub fn get_class_path(&self, index: PoolIndex) -> Result<ClassPath, ConstantError> {
         if index == 0 { return Err(ConstantError::NotFound(index)); }
