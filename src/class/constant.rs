@@ -1,9 +1,12 @@
 use std::collections::HashMap;
+use std::fmt::Write;
 use std::io::Read;
 
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 
+use crate::class::class::ClassPath;
 use crate::class::constant::ConstantTag::Package;
+use crate::error::ConstantError;
 use crate::error::ReadError::UnknownConstantTag;
 use crate::io::{Readable, ReadResult};
 use crate::readable_struct;
@@ -33,6 +36,40 @@ impl Readable for ConstantPool {
             }
         }
         Ok(pool)
+    }
+}
+
+impl ConstantPool {
+    pub fn dump<W: Write>(&self, o: &mut W) -> Result<(), std::io::Error> {
+        let mut keys: Vec<&u16> = self.inner.keys().collect();
+        keys.sort(); // Obtain a sorted version of the keys
+        for key in keys {
+            let v = self.inner.get(key)
+                .expect("expected constant pool to contain index");
+            write!(o, "{}: {:?}\n", key, v)?;
+        }
+        Ok(())
+    }
+
+    pub fn get_class_path(&self, index: &PoolIndex) -> Result<ClassPath, ConstantError> {
+        if index == 0 { return Err(ConstantError::NotFound(*index)); }
+        match self.inner.get(index) {
+            Some(constant) => match constant {
+                Constant::Class(v) => Ok(ClassPath::from(self.get_utf8(v)?)),
+                _ => Err(ConstantError::NotFound(*index))
+            }
+            None => Err(ConstantError::NotFound(*index))
+        }
+    }
+
+    pub fn get_utf8(&self, index: &PoolIndex) -> Result<&String, ConstantError> {
+        match self.inner.get(index) {
+            Some(constant) => match constant {
+                Constant::Utf8(value) => Ok(value),
+                _ => Err(ConstantError::ExpectedUtf8(*index))
+            }
+            None => Err(ConstantError::NotFound(*index))
+        }
     }
 }
 
