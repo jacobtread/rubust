@@ -21,17 +21,24 @@ pub enum Descriptor {
     Float,
     Int,
     Long,
-    ClassReference(ClassPath),
+    Class(ClassPath),
     Short,
     Boolean,
     Array(ArrayDescriptor),
     Method(MethodDescriptor),
     Void,
-    Unknown(String),
+    Unknown(String)
 }
 
-
 impl Descriptor {
+
+    pub fn parse_all(value: &str) -> Vec<Descriptor> {
+        let regex = Regex::new(r"([BCDFIJSZV]|(L.*;)|(\[.*))")
+            .expect("invalid regex");
+        regex.find_iter(value)
+            .map(|v|Descriptor::parse(v.as_str())).collect()
+    }
+
     pub fn parse(value: &str) -> Descriptor {
         match value {
             "B" => Descriptor::Byte,
@@ -45,7 +52,7 @@ impl Descriptor {
                 if value.starts_with('L') {
                     let mut name = value.split_at(value.len() - 1);
                     name = name.0.split_at(1);
-                    Descriptor::ClassReference(ClassPath::from_string(name.1))
+                    Descriptor::Class(ClassPath::from(name.1))
                 } else if value.starts_with('[') {
                     let name = value.trim_start_matches("[");
                     let dimensions = (value.len() - name.len()) as u8;
@@ -77,12 +84,5 @@ impl Descriptor {
                 }
             }
         }
-    }
-
-    pub fn parse_all(value: &str) -> Vec<Descriptor> {
-        let regex = Regex::new(r"([BCDFIJSZV]|(L.*;)|(\[.*))")
-            .expect("invalid regex");
-        regex.find_iter(value)
-            .map(|v|Descriptor::parse(v.as_str())).collect()
     }
 }

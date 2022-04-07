@@ -15,6 +15,10 @@ pub enum ReadError {
     UnknownConstantTag(u8),
     #[error("invalid class magic signature got 0x{0} expected 0xCAFEBABE")]
     InvalidMagic(u32),
+    #[error(transparent)]
+    InvalidConstant(#[from] ConstantError),
+    #[error("class name was not found in constant pool")]
+    NoClassName
 }
 
 #[derive(Error, Debug)]

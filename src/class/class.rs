@@ -2,6 +2,7 @@ use std::fmt::{Display, Formatter};
 use std::io::Read;
 
 use num_enum::{IntoPrimitive, TryFromPrimitive};
+use crate::class::access::AccessFlags;
 
 use crate::class::constant::ConstantPool;
 use crate::error::ReadError;
@@ -41,6 +42,9 @@ pub const CLASS_SIGNATURE: u32 = 0xCAFEBABE;
 pub struct Class {
     pub version: SourceVersion,
     pub constant_pool: ConstantPool,
+    pub access_flags: AccessFlags,
+    pub class_path: ClassPath,
+    pub super_class_path: Option<ClassPath>
 }
 
 impl Readable for Class {
@@ -57,9 +61,18 @@ impl Readable for Class {
         let version = SourceVersion { minor: minor_version, major: major_version };
         let constant_pool = ConstantPool::read(i)?;
 
+        let access_flags = AccessFlags(u16::read(i)?);
+
+        let class_path = constant_pool.get_class_path(u16::read(i)?)?
+            .ok_or(ReadError::NoClassName)?;
+        let super_class_path = constant_pool.get_class_path(u16::read(i)?)?;
+
         Ok(Class {
             version,
             constant_pool,
+            access_flags,
+            class_path,
+            super_class_path
         })
     }
 }
@@ -74,8 +87,8 @@ pub struct ClassPath {
     pub outer_classes: Vec<String>,
 }
 
-impl From<&String> for ClassPath {
-    fn from(value: &String) -> Self {
+impl ClassPath {
+    pub fn from(value: &str) -> Self {
         // Package components are split using slashes
         let mut package: Vec<String> = value.split('/')
             .map(|s| s.to_string())
@@ -90,9 +103,7 @@ impl From<&String> for ClassPath {
         let name = outer_classes.remove(outer_classes.len() - 1);
         ClassPath { package, outer_classes, name }
     }
-}
 
-impl ClassPath {
     pub fn is_object(&self) -> bool { self.is_java_lang() && self.outer_classes.is_empty() && self.name == "Object" }
     pub fn is_java_lang(&self) -> bool { self.package.len() >= 2 && self.package[0] == "java" && self.package[1] == "lang" }
     pub fn package_str(&self) -> String { self.package.join(".") }

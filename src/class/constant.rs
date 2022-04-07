@@ -29,7 +29,7 @@ impl Debug for ConstantPool {
             for key in keys{
                 let v = self.inner.get(key)
                     .expect("expected constant pool to contain index");
-                f.write_str(format!("  {}: {:?}", key, v).as_str())?;
+                f.write_str(format!("  {}: {:?}\n", key, v).as_str())?;
             }
             f.write_str("}")?;
         } else {
@@ -71,14 +71,17 @@ impl Readable for ConstantPool {
 
 impl ConstantPool {
 
-    pub fn get_class_path(&self, index: PoolIndex) -> Result<ClassPath, ConstantError> {
-        if index == 0 { return Err(ConstantError::NotFound(index)); }
+    pub fn get_class_path(&self, index: PoolIndex) -> Result<Option<ClassPath>, ConstantError> {
+        if index == 0 { return Ok(None) }
         match self.inner.get(&index) {
             Some(constant) => match constant {
-                Constant::Class(v) => Ok(ClassPath::from(self.get_utf8(*v)?)),
-                _ => Err(ConstantError::NotFound(index))
+                Constant::Class(v) => Ok(Some(ClassPath::from(
+                    self.get_utf8(*v)
+                        .map_err(|_|ConstantError::InvalidClassReference(index))?
+                ))),
+                _ => Err(ConstantError::InvalidClassReference(index))
             }
-            None => Err(ConstantError::NotFound(index))
+            None => Ok(None)
         }
     }
 
