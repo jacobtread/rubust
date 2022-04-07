@@ -62,7 +62,7 @@ impl Readable for Class {
         let version = SourceVersion { minor: minor_version, major: major_version };
         let constant_pool = ConstantPool::read(i)?;
 
-        let access_flags = AccessFlags(u16::read(i)?);
+        let access_flags = AccessFlags::read(i)?;
 
         let class_path = constant_pool.get_class_path(u16::read(i)?)?
             .ok_or(ReadError::NoClassName)?;
@@ -77,7 +77,6 @@ impl Readable for Class {
                 .ok_or(ConstantError::InvalidClassReference(name_index))?;
             interfaces.push(name)
         }
-
 
         Ok(Class {
             version,

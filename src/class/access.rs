@@ -1,4 +1,8 @@
 #![allow(dead_code)]
+
+use std::io::Read;
+use crate::io::{Readable, ReadResult};
+
 pub const ACC_PUBLIC: u16 = 0x0001;
 pub const ACC_PRIVATE: u16 = 0x0002;
 pub const ACC_PROTECTED: u16 = 0x0004;
@@ -23,6 +27,12 @@ pub const ACC_INTERFACE: u16 = 0x0200;
 
 #[derive(Debug, Clone)]
 pub struct AccessFlags(pub u16);
+
+impl Readable for AccessFlags {
+    fn read<R: Read>(i: &mut R) -> ReadResult<Self> where Self: Sized {
+        Ok(AccessFlags(u16::read(i)?))
+    }
+}
 
 impl AccessFlags {
     pub fn contains(&self, flag: u16) -> bool {
