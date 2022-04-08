@@ -1,21 +1,27 @@
-use std::fmt::{Display, Formatter};
+use std::fmt::{Debug, Display, format, Formatter, Write};
 use std::io::Read;
 
 use num_enum::{IntoPrimitive, TryFromPrimitive};
-use crate::class::access::AccessFlags;
 
+use crate::class::access::AccessFlags;
 use crate::class::constant::ConstantPool;
 use crate::error::{ConstantError, ReadError};
-use crate::io::{Readable, ReadResult, ReadVecExt};
+use crate::io::{Readable, ReadResult};
 
-#[derive(Debug)]
 pub struct SourceVersion {
     minor: u16,
     major: MajorVersion,
 }
 
+impl Debug for SourceVersion {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        MajorVersion::fmt(&self.major, f)?;
+        f.write_str(format!(", {}", self.minor).as_str())
+    }
+}
+
 #[allow(dead_code)]
-#[derive(Debug, Copy, Clone, Eq, PartialEq, IntoPrimitive, TryFromPrimitive)]
+#[derive(Copy, Clone, Eq, PartialEq, IntoPrimitive, TryFromPrimitive)]
 #[repr(u16)]
 pub enum MajorVersion {
     JavaLE4 = 48,
@@ -36,6 +42,28 @@ pub enum MajorVersion {
     Unknown,
 }
 
+impl Debug for MajorVersion {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            MajorVersion::JavaLE4 => "Java LE 4",
+            MajorVersion::Java5 => "Java 5",
+            MajorVersion::Java6 => "Java 6",
+            MajorVersion::Java7 => "Java 7",
+            MajorVersion::Java8 => "Java 8",
+            MajorVersion::Java9 => "Java 9",
+            MajorVersion::Java10 => "Java 10",
+            MajorVersion::Java11 => "Java 11",
+            MajorVersion::Java12 => "Java 12",
+            MajorVersion::Java13 => "Java 13",
+            MajorVersion::Java14 => "Java 14",
+            MajorVersion::Java15 => "Java 15",
+            MajorVersion::Java16 => "Java 16",
+            MajorVersion::Java17 => "Java 17",
+            MajorVersion::Unknown => "Unknown"
+        })
+    }
+}
+
 pub const CLASS_SIGNATURE: u32 = 0xCAFEBABE;
 
 #[derive(Debug)]
@@ -45,7 +73,7 @@ pub struct Class {
     pub access_flags: AccessFlags,
     pub class_path: ClassPath,
     pub super_class_path: Option<ClassPath>,
-    pub interfaces: Vec<ClassPath>
+    pub interfaces: Vec<ClassPath>,
 }
 
 impl Readable for Class {
@@ -84,7 +112,7 @@ impl Readable for Class {
             access_flags,
             class_path,
             super_class_path,
-            interfaces
+            interfaces,
         })
     }
 }
@@ -92,7 +120,7 @@ impl Readable for Class {
 
 /// Represents a path to a class includes outer classes,
 /// the packages list and the class name
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct ClassPath {
     pub name: String,
     pub package: Vec<String>,
@@ -140,6 +168,12 @@ impl ClassPath {
         }
         out += self.name.as_str();
         out
+    }
+}
+
+impl Debug for ClassPath {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.full_path().as_str())
     }
 }
 

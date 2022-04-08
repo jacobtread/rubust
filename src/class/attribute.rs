@@ -1,9 +1,11 @@
 use std::io::{Cursor, Read};
 
+use byteorder::ReadBytesExt;
+
 use crate::class::access::AccessFlags;
 use crate::class::constant::{ConstantPool, PoolIndex};
 use crate::error::ReadError;
-use crate::io::{Readable, ReadByteVecExt};
+use crate::io::{Readable, VecReadableBytesSize, VecReadableFn, VecReadableSize};
 use crate::readable_struct;
 
 readable_struct! {
@@ -65,9 +67,8 @@ impl Attribute {
         constant_pool: &ConstantPool,
     ) -> Result<Self, ReadError> where Self: Sized {
         let name_index = u16::read(i)?;
-        let name = constant_pool.get_string(name_index)?;
-        let length = u32::read(i)? as usize;
-        let data = i.read_bytes_vec(length)?;
+        let name = constant_pool.get_utf8(name_index)?;
+        let data = u32::read_bytes(i)?;
         Ok(Attribute {
             name: name.clone(),
             value: AttributeValue::from_name(
@@ -87,8 +88,6 @@ pub struct CodeAttr {
     pub exception_table: Vec<ExceptionTableEntry>,
     pub attributes: Vec<Attribute>,
 }
-
-
 
 #[derive(Debug, Clone)]
 pub enum AttributeValue {
@@ -129,68 +128,32 @@ impl AttributeValue {
     ) -> Result<AttributeValue, ReadError> {
         let c = &mut Cursor::new(data);
         Ok(match name {
-            "Code" => {
-                let max_stack = u16::read(c)?;
-                let max_locals = u16::read(c)?;
-
-                let code_length = u32::read(c)? as usize;
-                let code = read_byte_vec(c, code_length)?;
-
-                let exception_table_length = u16::read(c)? as usize;
-                let exception_table = read_vec_from(c, exception_table_length)?;
-
-                let attributes_count = u16::read(c)? as usize;
-                let mut attributes = Vec::with_capacity(attributes_count);
-
-
-                for _ in 0..attributes_count {
-                    attributes.push(Attribute::read(c, &constant_pool)?);
-                }
-
-                AttributeValue::Code(CodeAttr {
-                    max_stack,
-                    max_locals,
-                    code,
-                    exception_table,
-                    attributes,
-                })
-            }
+            "Code" => AttributeValue::Code(CodeAttr {
+                max_stack: u16::read(c)?,
+                max_locals: u16::read(c)?,
+                code: u32::read_vec(c)?,
+                exception_table: u16::read_vec(c)?,
+                attributes: u16::read_vec_closure(
+                    c,
+                    |r| Attribute::read(r, &constant_pool),
+                )?,
+            }),
             "ConstantValue" => AttributeValue::ConstantValue(PoolIndex::read(c)?),
             "Deprecated" => AttributeValue::Depreciated,
-            "Exceptions" => {
-                let exceptions_count = u16::read(c)? as usize;
-                let exceptions = read_vec_from(c, exceptions_count)?;
-                AttributeValue::Exceptions(exceptions)
-            }
-            "InnerClasses" => {
-                let classes_count = u16::read(c)? as usize;
-                let classes = read_vec_from(c, classes_count)?;
-                AttributeValue::InnerClasses(classes)
-            }
+            "Exceptions" => AttributeValue::Exceptions(u16::read_vec(c)?),
+            "InnerClasses" => AttributeValue::InnerClasses(u16::read_vec(c)?),
             "Signature" => {
                 let id = u16::read(c)?;
-                AttributeValue::Signature(constant_pool.get_string(id)?)
+                AttributeValue::Signature(constant_pool.get_utf8(id)?.clone())
             }
             "SourceDebugExtension" => AttributeValue::SourceDebugExtension(data.to_vec()),
-            "LineNumberTable" => {
-                let ln_table_count = u16::read(c)? as usize;
-                let table = read_vec_from(c, ln_table_count)?;
-                AttributeValue::LineNumberTable(table)
-            }
-            "LocalVariableTable" => {
-                let lv_table_count = u16::read(c)? as usize;
-                let table = read_vec_from(c, lv_table_count)?;
-                AttributeValue::LocalVariableTable(table)
-            }
+            "LineNumberTable" => AttributeValue::LineNumberTable(u16::read_vec(c)?),
+            "LocalVariableTable" => AttributeValue::LocalVariableTable(u16::read_vec(c)?),
             "SourceFile" => AttributeValue::SourceFile(PoolIndex::read(c)?),
             "Synthetic" => AttributeValue::Synthetic,
             "AnnotationDefault" => AttributeValue::AnnotationDefault(data.to_vec()),
             "EnclosingMethod" => AttributeValue::EnclosingMethod(EnclosingMethod::read(c)?),
-            "LocalVariableTypeTable" => {
-                let lvt_table_count = u16::read(c)? as usize;
-                let table = read_vec_from(c, lvt_table_count)?;
-                AttributeValue::LocalVariableTable(table)
-            }
+            "LocalVariableTypeTable" => AttributeValue::LocalVariableTable(u16::read_vec(c)?),
             _ => AttributeValue::Unknown(data.to_vec())
         })
     }

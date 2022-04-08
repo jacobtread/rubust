@@ -23,30 +23,61 @@ impl Readable for i8 {
     }
 }
 
-pub trait ReadByteVecExt: io::Read {
-    #[inline]
-    fn read_bytes_vec(&mut self, length: usize) -> ReadResult<Vec<u8>> {
-        let mut buffer = Vec::with_capacity(length);
-        unsafe { buffer.set_len(length) }
-        self.read_exact(&mut buffer).map_err(ReadError::from)?;
-        Ok(buffer)
-    }
+// Trait for reading vec of a runtime known size
+pub trait VecReadableSize: Sized {
+    fn read_vec<C: Readable, R: Read>(r: &mut R) -> ReadResult<Vec<C>>;
 }
 
-pub trait ReadVecExt: io::Read {
-    #[inline]
-    fn read_vec<C: Readable>(&mut self, length: usize) -> ReadResult<Vec<C>> where Self: Sized {
-        let mut out = Vec::with_capacity(length);
-        for _ in 0..length {
-            out.push(C::read(self)?)
-        }
-        Ok(out)
-    }
+// Trait for reading vec of a runtime known size
+pub trait VecReadableBytesSize: Sized {
+    fn read_bytes<R: Read>(r: &mut R) -> ReadResult<Vec<u8>>;
 }
 
-impl<R: io::Read> ReadByteVecExt for R {}
+// Trait for read a vec of values of a runtime size using a closure for reading
+pub trait VecReadableFn: Sized {
+    fn read_vec_closure<C, R: Read, F: Fn(&mut R) -> ReadResult<C>>(r: &mut R, f: F) -> ReadResult<Vec<C>>;
+}
 
-impl<R: io::Read> ReadVecExt for R {}
+macro_rules! impl_vec_readable {
+    ($($type:ty),*) => {
+        $(
+            impl VecReadableSize for $type {
+                 fn read_vec<C: Readable, R: Read>(r: &mut R) -> ReadResult<Vec<C>> {
+                    let length = <$type>::read(r)? as usize;
+                    let mut out = Vec::with_capacity(length);
+                    for _ in 0..length {
+                        out.push(C::read(r)?)
+                    }
+                    Ok(out)
+                 }
+            }
+
+            impl VecReadableBytesSize for $type {
+                 fn read_bytes<R: Read>(r: &mut R) -> ReadResult<Vec<u8>> {
+                    let length = <$type>::read(r)? as usize;
+                    let mut buffer = Vec::with_capacity(length);
+                    unsafe { buffer.set_len(length) }
+                    r.read_exact(&mut buffer).map_err(ReadError::from)?;
+                    Ok(buffer)
+                 }
+            }
+
+            impl VecReadableFn for $type {
+                fn read_vec_closure<C, R: Read, F: Fn(&mut R) -> ReadResult<C>>(r: &mut R, f: F) -> ReadResult<Vec<C>> {
+                    let length = <$type>::read(r)? as usize;
+                    let mut out = Vec::with_capacity(length);
+                    for _ in 0..length {
+                        out.push(f(r)?)
+                    }
+                    Ok(out)
+                }
+            }
+        )*
+    };
+}
+
+impl_vec_readable!(u8,u16,u32);
+
 
 // Macro for implementing the readable trait on numbers
 // that support the BigEndian encoding.
@@ -73,8 +104,7 @@ be_readable!(
 
 impl Readable for String {
     fn read<R: Read>(i: &mut R) -> ReadResult<Self> where Self: Sized {
-        let length = u16::read(i)? as usize;
-        let bytes = i.read_bytes_vec(length)?;
+        let bytes = u16::read_bytes(i)?;
         Ok(
             String::from_utf8(bytes)
                 .map_err(ReadError::from)?
@@ -92,14 +122,14 @@ macro_rules! readable_struct {
         )*
     ) => {
         $(
-            #[derive(Debug)]
+            #[derive(Debug, Clone)]
             #[allow(dead_code)]
             pub struct $name {
                 pub $($field: $type,)*
             }
 
             impl Readable for $name {
-                fn read<R: Read>(i: &mut R) -> ReadResult<Self> where Self: Sized {
+                fn read<R: Read>(i: &mut R) -> $crate::io::ReadResult<Self> where Self: Sized {
                     Ok(Self {
                         $($field: <$type>::read(i)?),*
                     })
