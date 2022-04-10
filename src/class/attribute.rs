@@ -1,7 +1,4 @@
 use std::io::{Cursor, Read};
-
-use byteorder::ReadBytesExt;
-
 use crate::class::access::AccessFlags;
 use crate::class::constant::{ConstantPool, PoolIndex};
 use crate::error::ReadError;
@@ -90,6 +87,7 @@ pub struct CodeAttr {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub enum AttributeValue {
     // value_index
     ConstantValue(PoolIndex),

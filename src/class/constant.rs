@@ -94,6 +94,16 @@ impl ConstantPool {
             None => Err(ConstantError::NotFound(index))
         }
     }
+
+    pub fn read_utf8<R: Read>(&self, i: &mut R) -> ReadResult<&String> {
+        let index = PoolIndex::read(i)?;
+        Ok(self.get_utf8(index)?)
+    }
+
+    pub fn read_class_path<R: Read>(&self, i: &mut R) -> ReadResult<Option<ClassPath>> {
+        let index = PoolIndex::read(i)?;
+        Ok(self.get_class_path(index)?)
+    }
 }
 
 readable_struct! {

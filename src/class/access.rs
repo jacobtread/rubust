@@ -1,11 +1,9 @@
 #![allow(dead_code)]
 
-use std::fmt::{Debug, format, Formatter};
+use std::fmt::{Debug, Formatter};
 use std::io::Read;
 
 use num_enum::{IntoPrimitive, TryFromPrimitive};
-use crate::class::class::Class;
-
 use crate::io::{Readable, ReadResult};
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, IntoPrimitive, TryFromPrimitive)]
@@ -68,22 +66,22 @@ impl AccessFlags {
 }
 
 trait AccessFlag {
-    fn is_set(self, flag: &AccessFlags) -> bool;
+    fn is_set(&self, flag: &AccessFlags) -> bool;
     fn set(self, flag: &mut AccessFlags);
 }
 
 impl AccessFlag for MethodAccessFlags {
-    fn is_set(self, flag: &AccessFlags) -> bool { flag.is_set(self.into()) }
+    fn is_set(&self, flag: &AccessFlags) -> bool { flag.is_set((*self as u16).into()) }
     fn set(self, flag: &mut AccessFlags) { flag.set(self.into()) }
 }
 
 impl AccessFlag for ClassAccessFlags {
-    fn is_set(self, flag: &AccessFlags) -> bool { flag.is_set(self.into()) }
+    fn is_set(&self, flag: &AccessFlags) -> bool { flag.is_set((*self as u16).into()) }
     fn set(self, flag: &mut AccessFlags) { flag.set(self.into()) }
 }
 
 impl AccessFlag for FieldAFlags{
-    fn is_set(self, flag: &AccessFlags) -> bool { flag.is_set(self.into()) }
+    fn is_set(&self, flag: &AccessFlags) -> bool { flag.is_set((*self as u16).into()) }
     fn set(self, flag: &mut AccessFlags) { flag.set(self.into()) }
 }
 

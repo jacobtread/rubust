@@ -1,12 +1,14 @@
-use std::fmt::{Debug, Display, format, Formatter, Write};
+use std::fmt::{Debug, Display, Formatter};
 use std::io::Read;
 
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 
 use crate::class::access::AccessFlags;
-use crate::class::constant::ConstantPool;
+use crate::class::attribute::Attribute;
+use crate::class::constant::{ConstantPool, PoolIndex};
+use crate::class::member::Member;
 use crate::error::{ConstantError, ReadError};
-use crate::io::{Readable, ReadResult};
+use crate::io::{Readable, ReadResult, VecReadableFn};
 
 pub struct SourceVersion {
     minor: u16,
@@ -74,6 +76,9 @@ pub struct Class {
     pub class_path: ClassPath,
     pub super_class_path: Option<ClassPath>,
     pub interfaces: Vec<ClassPath>,
+    pub fields: Vec<Member>,
+    pub methods: Vec<Member>,
+    pub attributes: Vec<Attribute>,
 }
 
 impl Readable for Class {
@@ -96,15 +101,16 @@ impl Readable for Class {
             .ok_or(ReadError::NoClassName)?;
         let super_class_path = constant_pool.get_class_path(u16::read(i)?)?;
 
-        let interface_count = u16::read(i)?;
-        let mut interfaces = Vec::with_capacity(interface_count as usize);
+        let interfaces = u16::read_vec_closure(i, |r| -> ReadResult<ClassPath> {
+            let name_index = PoolIndex::read(r)?;
+            constant_pool.get_class_path(name_index)?
+                .ok_or(ConstantError::InvalidClassReference(name_index))
+                .map_err(ReadError::from)
+        })?;
 
-        for _ in 0..interface_count {
-            let name_index = u16::read(i)?;
-            let name = constant_pool.get_class_path(name_index)?
-                .ok_or(ConstantError::InvalidClassReference(name_index))?;
-            interfaces.push(name)
-        }
+        let fields = u16::read_vec_closure(i,|r|Member::read(r, &constant_pool))?;
+        let methods = u16::read_vec_closure(i,|r|Member::read(r, &constant_pool))?;
+        let attributes = u16::read_vec_closure(i, |r|Attribute::read(r, &constant_pool))?;
 
         Ok(Class {
             version,
@@ -113,6 +119,9 @@ impl Readable for Class {
             class_path,
             super_class_path,
             interfaces,
+            fields,
+            methods,
+            attributes
         })
     }
 }
@@ -165,6 +174,18 @@ impl ClassPath {
         if !self.outer_classes.is_empty() {
             out += self.outer_classes.join(".").as_str();
             out += ".";
+        }
+        out += self.name.as_str();
+        out
+    }
+    pub fn internal_path(&self) -> String {
+        let mut out = self.package_str();
+        if !out.is_empty() {
+            out += "/";
+        }
+        if !self.outer_classes.is_empty() {
+            out += self.outer_classes.join("$").as_str();
+            out += "$";
         }
         out += self.name.as_str();
         out

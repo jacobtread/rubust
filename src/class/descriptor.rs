@@ -1,5 +1,8 @@
+use std::fmt::{Debug, Formatter};
 use regex::Regex;
+
 use crate::class::class::ClassPath;
+use crate::io::ReadResult;
 
 #[derive(Debug, Clone)]
 pub struct MethodDescriptor {
@@ -13,7 +16,7 @@ pub struct ArrayDescriptor {
     pub descriptor: Box<Descriptor>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum Descriptor {
     Byte,
     Char,
@@ -27,16 +30,57 @@ pub enum Descriptor {
     Array(ArrayDescriptor),
     Method(MethodDescriptor),
     Void,
-    Unknown(String)
+    Unknown(String),
+}
+
+impl Debug for Descriptor {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.to_java().as_str())?;
+        Ok(())
+    }
 }
 
 impl Descriptor {
-
     pub fn parse_all(value: &str) -> Vec<Descriptor> {
         let regex = Regex::new(r"([BCDFIJSZV]|(L.*;)|(\[.*))")
             .expect("invalid regex");
         regex.find_iter(value)
-            .map(|v|Descriptor::parse(v.as_str())).collect()
+            .map(|v| Descriptor::parse(v.as_str())).collect()
+    }
+
+    pub fn ito_java(&self) -> &str {
+        match self {
+            Descriptor::Byte => "B",
+            Descriptor::Char => "C",
+            Descriptor::Double => "D",
+            Descriptor::Float => "F",
+            Descriptor::Int => "I",
+            Descriptor::Long => "J",
+            Descriptor::Short => "S",
+            Descriptor::Boolean => "Z",
+            Descriptor::Void => "V",
+            _ => "",
+        }
+    }
+
+    pub fn to_java(&self) -> String {
+        match self {
+            Descriptor::Class(clazz) => format!("L{};", clazz.internal_path()),
+            Descriptor::Array(arr) => {
+                format!("{}{}", "[".repeat(arr.dimensions as usize), arr.descriptor.to_java())
+            }
+            Descriptor::Method(met) => {
+                let mut out = String::from('(');
+                for x in &met.parameters {
+                    out.push_str(x.to_java().as_str());
+                }
+                out.push_str(")");
+                out.push_str(met.return_type.to_java().as_str());
+                out
+            }
+            Descriptor::Unknown(v) => v.clone(),
+            el => String::from(el.ito_java())
+        }
     }
 
     pub fn parse(value: &str) -> Descriptor {
@@ -48,6 +92,8 @@ impl Descriptor {
             "I" => Descriptor::Int,
             "J" => Descriptor::Long,
             "V" => Descriptor::Void,
+            "S" => Descriptor::Short,
+            "Z" => Descriptor::Boolean,
             _ => {
                 if value.starts_with('L') {
                     let mut name = value.split_at(value.len() - 1);
