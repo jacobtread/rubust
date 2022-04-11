@@ -211,8 +211,8 @@ impl Block {
                 Instr::BALoad |
                 Instr::AALoad |
                 Instr::FALoad => {
-                    let reference = stack.pop_boxed()?;
                     let index = stack.pop_boxed()?;
+                    let reference = stack.pop_boxed()?;
                     stack.push(AST::ArrayLoad { reference, index })
                 }
                 Instr::PutField(index) => {
@@ -237,7 +237,7 @@ impl Block {
                 }
                 Instr::ArrayLength => {
                     let reference = stack.pop_boxed()?;
-                    stack.push(AST::ArrayLength { reference });
+                    stack.push(AST::ArrayLength(reference));
                 }
                 Instr::LoadConst(index) => {
                     stack.push(match constant_pool.inner.get(index)
@@ -546,9 +546,7 @@ pub enum AST {
         array_type: ArrayType,
         count: Box<AST>,
     },
-    ArrayLength {
-        reference: Box<AST>
-    },
+    ArrayLength(Box<AST>),
     ArrayLoad {
         reference: Box<AST>,
         index: Box<AST>,
@@ -735,7 +733,7 @@ impl AST {
                 }
                 write!(o, ")")?;
                 if let Descriptor::Method(met) = &method.name_and_type.descriptor {
-                    if let Descriptor::Void = *met.return_type  {
+                    if let Descriptor::Void = *met.return_type {
                         write!(o, ";")?;
                     }
                 }
@@ -753,7 +751,7 @@ impl AST {
                 }
                 write!(o, ")")?;
                 if let Descriptor::Method(met) = &method.name_and_type.descriptor {
-                    if let Descriptor::Void = *met.return_type  {
+                    if let Descriptor::Void = *met.return_type {
                         write!(o, ";")?;
                     }
                 }
@@ -790,7 +788,7 @@ impl AST {
             AST::DoubleConstant(value) => { write!(o, "{}D", value)?; }
             AST::VoidReturn => { write!(o, "return;")?; }
             AST::Return(value) => { value.write_java(o, member, code_attr)?; }
-            AST::NewArrayMulti {array_type, dimensions} => {
+            AST::NewArrayMulti { array_type, dimensions } => {
                 let descriptor = Descriptor::parse(array_type.name.as_str());
                 if let Descriptor::Array(array_desc) = descriptor {
                     let mut dim = *dimensions;
@@ -801,6 +799,16 @@ impl AST {
                 } else {
                     write!(o, "/* bad array descriptor */")?;
                 }
+            }
+            AST::ArrayLoad { index, reference } => {
+                reference.write_java(o, member, code_attr)?;
+                write!(o, "[")?;
+                index.write_java(o, member, code_attr)?;
+                write!(o, "]")?;
+            }
+            AST::ArrayLength (reference)=> {
+                reference.write_java(o, member, code_attr)?;
+                write!(o, ".length")?;
             }
             v => { write!(o, "{:?}", v)?; }
         }
