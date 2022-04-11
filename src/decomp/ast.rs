@@ -1,3 +1,4 @@
+use std::collections::hash_map::Values;
 use std::collections::HashMap;
 use std::detect::__is_feature_detected::popcnt;
 use std::fmt::{Display, Formatter};
@@ -402,6 +403,11 @@ impl Block {
                     stack.values.insert(stack.values.len() - 3, second_last);
                     stack.values.insert(stack.values.len() - 4, last);
                 }
+                Instr::InstanceOf(index) => {
+                    let class = constant_pool.get_class_path_required(index)?;
+                    let reference = stack.pop_boxed()?;
+                    stack.push(AST::InstanceOf(reference, class))
+                }
                 _ => {}
             };
         }
@@ -438,6 +444,7 @@ pub enum AST {
         member: MemberReference,
         args: Vec<AST>,
     },
+    InstanceOf(Box<AST>, ClassPath),
     Comparison(ComparisonMode, Box<AST>, Box<AST>),
     SignedComparison(Box<AST>, Box<AST>),
     PrimitiveCast {

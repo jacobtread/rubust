@@ -108,7 +108,7 @@ pub enum Instr {
     IDiv,//
     IAnd, //
     INeg,//
-    InstanceOf(PoolIndex),
+    InstanceOf(PoolIndex), //
     InvokeDynamic(PoolIndex),
     L2i,//
     L2d,//
