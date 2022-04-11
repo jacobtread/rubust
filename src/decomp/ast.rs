@@ -693,6 +693,7 @@ impl AST {
                 right.write_java(o, member, code_attr)?;
             }
             AST::Increment { index, value } => {
+
                 if *value == 1 {
                     write!(o, "var{}++", index)?;
                 } else {
@@ -787,7 +788,11 @@ impl AST {
             AST::LongConstant(value) => { write!(o, "{}L", value)?; }
             AST::DoubleConstant(value) => { write!(o, "{}D", value)?; }
             AST::VoidReturn => { write!(o, "return;")?; }
-            AST::Return(value) => { value.write_java(o, member, code_attr)?; }
+            AST::Return(value) => {
+                write!(o, "return ")?;
+                value.write_java(o, member, code_attr)?;
+                write!(o, ";")?;
+            }
             AST::NewArrayMulti { array_type, dimensions } => {
                 let descriptor = Descriptor::parse(array_type.name.as_str());
                 if let Descriptor::Array(array_desc) = descriptor {
@@ -809,6 +814,17 @@ impl AST {
             AST::ArrayLength (reference)=> {
                 reference.write_java(o, member, code_attr)?;
                 write!(o, ".length")?;
+            }
+            AST::IfEq(value, branch) => {
+                write!(o, "ifeq ")?;
+                value.write_java(o, member, code_attr)?;
+                write!(o, " goto: {}", branch)?;
+            }
+            AST::IfGreaterThanOrEqual(left, right, branch) => {
+                left.write_java(o, member, code_attr)?;
+                write!(o, " >= ")?;
+                right.write_java(o, member, code_attr)?;
+                write!(o, " goto: {}", branch)?;
             }
             v => { write!(o, "{:?}", v)?; }
         }

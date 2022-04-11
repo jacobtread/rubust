@@ -143,18 +143,19 @@ impl JavaWriter {
 
 
     fn write_code<W: Write>(&self, class: &Class, method: &Member, code_attr: &CodeAttr, o: &mut W) -> WriteResult {
-        write!(o, ") {{")?;
+        write!(o, ") {{\n")?;
         let instr = parse_code(code_attr.code.clone())
             .map_err(|_| WriteError::BadCodeAttribute)?;
         let control_flow_graph = gen_control_flow_graph(&instr);
         let paths = find_paths(&control_flow_graph, 0, Vec::new());
+        println!("Paths {:?}", paths);
         let mut has_values = false;
         let mut keys: Vec<&u64> = control_flow_graph.keys().collect();
         keys.sort(); // Obtain a sorted version of the keys
         for key in keys {
             let block: &Block = control_flow_graph.get(key)
                 .expect("expected constant pool to contain index");
-            // println!("\n{}: {:?}", key, block);
+            println!("\x1b[93m{}: {:?}\x1b[0m", key, block);
             let decompiled = block.decompile(&class.constant_pool)?;
             let length = decompiled.len();
             for (index, statement) in decompiled.iter().enumerate() {
@@ -163,16 +164,17 @@ impl JavaWriter {
                         AST::VoidReturn => break,
                         _ => {}
                     }
-                } else {
-
-                    write!(o, "\n      ")?;
-                    statement.write_java(o, method, code_attr)?;
-                    if !has_values { has_values = true; }
+                }
+                write!(o,"      ")?;
+                statement.write_java(o, method, code_attr)?;
+                writeln!(o)?;
+                if !has_values {
+                    has_values = true;
                 }
             }
         }
         if has_values {
-            write!(o, "\n    }}\n\n")?;
+            write!(o, "    }}\n\n")?;
         } else {
             write!(o, "}}\n\n")?;
         }
