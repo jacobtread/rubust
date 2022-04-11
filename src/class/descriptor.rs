@@ -2,7 +2,6 @@ use std::fmt::{Debug, Formatter};
 use regex::Regex;
 
 use crate::class::class::ClassPath;
-use crate::io::ReadResult;
 
 #[derive(Debug, Clone)]
 pub struct MethodDescriptor {

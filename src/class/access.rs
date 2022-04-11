@@ -3,7 +3,6 @@
 use std::fmt::{Debug, Formatter, Write};
 use std::io::Read;
 
-use crate::class::constant::ConstantTag::Class;
 use crate::io::{Readable, ReadResult};
 
 macro_rules! access_flags {
@@ -63,9 +62,8 @@ impl Debug for AccessFlags {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let values: Vec<&'static str> = AccessFlag::get_values(self).iter()
             .map(|x| x.name()).collect();
-        f.write_str(format!("AccessFlags ({:#06x}, [", self.0).as_str())?;
-        f.write_str(values.join(", ").as_str())?;
-        f.write_str("])")
+        f.write_str(format!("AccessFlags ({:#06x}, [{}])", self.0, values.join(", ").as_str())
+            .as_str())
     }
 }
 
@@ -82,7 +80,6 @@ impl AccessFlags {
         self.0 | sv == sv
     }
 }
-
 
 access_flags! {
     Public = 0x0001,
