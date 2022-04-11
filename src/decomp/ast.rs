@@ -5,8 +5,9 @@ use std::fmt::{Display, Formatter};
 use crate::class::class::ClassPath;
 use crate::class::constant::{Constant, ConstantPool, MemberReference};
 use crate::class::descriptor::Descriptor;
-use crate::class::op::{Instr, InstrSet};
+use crate::class::op::{ArrayType, Instr, InstrSet};
 use crate::error::{ConstantError, DecompileError, StackError};
+use crate::error::DecompileError::StackError;
 
 #[derive(Debug, Clone)]
 pub enum VarType {
@@ -136,8 +137,7 @@ impl Block {
                 Instr::ALoad(index) => { stack.push(AST::Variable(*index, VarType::Reference)); }
                 Instr::InvokeSpecial(index) |
                 Instr::InvokeInterface(index) |
-                Instr::InvokeVirtual(index) |
-                Instr::InvokeDynamic(index) => {
+                Instr::InvokeVirtual(index) => {
                     let member = constant_pool.get_member_ref(index)?;
                     let descriptor = &member.name_and_type.descriptor;
                     if let Descriptor::Method(method) = descriptor {
@@ -151,6 +151,24 @@ impl Block {
                             statements.push(AST::MethodCall { member, reference, args });
                         } else {
                             stack.push(AST::MethodCall { member, reference, args });
+                        }
+                    } else {
+                        Err(DecompileError::ExpectedMethodDescriptor)?;
+                    }
+                }
+                Instr::InvokeStatic(index) => {
+                    let member = constant_pool.get_member_ref(index)?;
+                    let descriptor = &member.name_and_type.descriptor;
+                    if let Descriptor::Method(method) = descriptor {
+                        let mut args = Vec::new();
+                        for _ in 0..method.parameters.len() {
+                            args.push(stack.pop()?);
+                        }
+                        args.reverse();
+                        if let Descriptor::Void = *method.return_type {
+                            statements.push(AST::StaticCall { member, args });
+                        } else {
+                            stack.push(AST::StaticCall { member, args });
                         }
                     } else {
                         Err(DecompileError::ExpectedMethodDescriptor)?;
@@ -187,9 +205,25 @@ impl Block {
                     let index = stack.pop_boxed()?;
                     stack.push(AST::ArrayLoad { reference, index })
                 }
+                Instr::PutField(index) => {
+                    let member = constant_pool.get_member_ref(index)?;
+                    let reference = stack.pop_boxed()?;
+                    let value = stack.pop_boxed()?;
+                    statements.push(AST::FieldSet(member, reference, value));
+                }
+                Instr::GetField(index) => {
+                    let member = constant_pool.get_member_ref(index)?;
+                    let reference = stack.pop_boxed()?;
+                    stack.push(AST::FieldGet(member, reference));
+                }
+                Instr::PutStatic(index) => {
+                    let member = constant_pool.get_member_ref(index)?;
+                    let value = stack.pop_boxed()?;
+                    statements.push(AST::StaticSet(member, value))
+                }
                 Instr::GetStatic(index) => {
                     let member = constant_pool.get_member_ref(index)?;
-                    stack.push(AST::Static(member));
+                    stack.push(AST::StaticGet(member));
                 }
                 Instr::ArrayLength => {
                     let reference = stack.pop_boxed()?;
@@ -205,6 +239,11 @@ impl Block {
                         Constant::String(index) => AST::StringConst(constant_pool.get_utf8(index)?.clone()),
                         _ => unimplemented!(),
                     });
+                }
+                Instr::CheckCast(index) => {
+                    let class = constant_pool.get_class_path_required(index)?;
+                    let value = stack.pop_boxed()?;
+                    stack.push(AST::ClassCast { value, class })
                 }
                 Instr::IConst(value) => { stack.push(AST::IntegerConstant(*value))?; }
                 Instr::DConst(value) => { stack.push(AST::DoubleConstant(*value))?; }
@@ -255,7 +294,7 @@ impl Block {
                 Instr::New(index) => {
                     let class = constant_pool.get_class_path_required(index)?;
                     stack.push(AST::New(class))
-                },
+                }
                 Instr::FCmpL | Instr::DCmpL => {
                     let left = stack.pop_boxed()?;
                     let right = stack.pop_boxed()?;
@@ -305,12 +344,68 @@ impl Block {
                     let value = stack.pop_boxed()?;
                     stack.push(AST::Negate(value))
                 }
+                Instr::IInc { index, value } => { statements.push(AST::Increment { index: *index, value: *value }); }
+                Instr::NewArray(array_type) => {
+                    let count = stack.pop_boxed()?;
+                    stack.push(AST::PrimitiveArray { array_type: *array_type, count })
+                }
+                Instr::MultiANewArray { index, dimensions } => {
+                    let d = *dimensions;
+                    for _ in 0..d {
+                        stack.pop()?
+                    }
+                    let class = constant_pool.get_class_path_required(index)?;
+                    stack.push(AST::ArrayReference {
+                        dimensions: d,
+                        array_type: class,
+                    })
+                }
+                Instr::Dup => {
+                    let last = stack.values.last()
+                        .ok_or(StackError::NotEnough(1, 0))?.clone();
+                    stack.push(last)
+                }
+                Instr::DupX1 => {
+                    let last = stack.values.last()
+                        .ok_or(StackError::NotEnough(1, 0))?.clone();
+                    stack.values.insert(stack.values.len() - 2, last)
+                }
+                Instr::DupX2 => {
+                    let last = stack.values.last()
+                        .ok_or(StackError::NotEnough(1, 0))?.clone();
+                    stack.values.insert(stack.values.len() - 3, last)
+                }
+                Instr::Dup2 => {
+                    let length = stack.values.len();
+                    let last = stack.values.get(length - 1)
+                        .ok_or(StackError::NotEnough(1, 0))?.clone();
+                    let second_last = stack.values.get(length - 2)
+                        .ok_or(StackError::NotEnough(1, 0))?.clone();
+                    stack.push(second_last);
+                    stack.push(last);
+                }
+                Instr::Dup2X1 => {
+                    let length = stack.values.len();
+                    let last = stack.values.get(length - 1)
+                        .ok_or(StackError::NotEnough(1, 0))?.clone();
+                    let second_last = stack.values.get(length - 2)
+                        .ok_or(StackError::NotEnough(1, 0))?.clone();
+                    stack.values.insert(stack.values.len() - 2, second_last);
+                    stack.values.insert(stack.values.len() - 3, last);
+                }
+                Instr::Dup2X2 => {
+                    let length = stack.values.len();
+                    let last = stack.values.get(length - 1)
+                        .ok_or(StackError::NotEnough(1, 0))?.clone();
+                    let second_last = stack.values.get(length - 2)
+                        .ok_or(StackError::NotEnough(1, 0))?.clone();
+                    stack.values.insert(stack.values.len() - 3, second_last);
+                    stack.values.insert(stack.values.len() - 4, last);
+                }
                 _ => {}
             };
         }
-
         stack.empty()?;
-
         Ok(statements)
     }
 }
@@ -325,15 +420,22 @@ enum ComparisonMode {
 pub enum AST {
     Variable(u16, VarType),
     Set(u16, Box<AST>),
+    FieldSet(MemberReference, Box<AST>, Box<AST>),
+    FieldGet(MemberReference, Box<AST>),
     Mul(Box<AST>, Box<AST>),
     Div(Box<AST>, Box<AST>),
     Sub(Box<AST>, Box<AST>),
     Add(Box<AST>, Box<AST>),
     New(ClassPath),
-    Static(MemberReference),
+    StaticSet(MemberReference, Box<AST>),
+    StaticGet(MemberReference),
     MethodCall {
         member: MemberReference,
         reference: Box<AST>,
+        args: Vec<AST>,
+    },
+    StaticCall {
+        member: MemberReference,
         args: Vec<AST>,
     },
     Comparison(ComparisonMode, Box<AST>, Box<AST>),
@@ -350,12 +452,16 @@ pub enum AST {
         array_type: ClassPath,
         dimensions: u8,
     },
-    ArrayLoad {
-        reference: Box<AST>,
-        index: Box<AST>,
+    PrimitiveArray {
+        array_type: ArrayType,
+        count: Box<AST>,
     },
     ArrayLength {
         reference: Box<AST>
+    },
+    ArrayLoad {
+        reference: Box<AST>,
+        index: Box<AST>,
     },
     ArrayStore {
         reference: Box<AST>,
@@ -380,7 +486,8 @@ pub enum AST {
     BitwiseShl(Box<AST>, Box<AST>),
     BitwiseShr(Box<AST>, Box<AST>),
     LogicalShr(Box<AST>, Box<AST>),
-    Remainder(Box<AST>, Box<AST>)
+    Remainder(Box<AST>, Box<AST>),
+    Increment { index: u16, value: i16 },
 }
 
 pub fn get_index_for_pos(instructions: &InstrSet, pos: u16) -> Option<usize> {

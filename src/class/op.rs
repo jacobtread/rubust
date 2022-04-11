@@ -4,7 +4,7 @@ use crate::class::constant::PoolIndex;
 use crate::error::DecompileError;
 use crate::io::{Readable, ReadResult};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone,Copy)]
 pub enum ArrayType {
     Boolean,
     Char,
@@ -32,7 +32,7 @@ pub enum Instr {
     SAStore, //
     BIPush(i8), //
     SIPush(i16), //
-    NewArray(ArrayType),
+    NewArray(ArrayType), //
     Pop2,//
     IConst(i32),//
     FConst(f32),//
@@ -41,19 +41,19 @@ pub enum Instr {
     IAdd,//
     FAdd,//
     InvokeSpecial(PoolIndex), //
-    InvokeStatic(PoolIndex),
+    InvokeStatic(PoolIndex), //
     InvokeVirtual(PoolIndex), //
     InvokeInterface(PoolIndex),
-    PutField(PoolIndex),
-    GetField(PoolIndex),
-    PutStatic(PoolIndex),
+    PutField(PoolIndex), //
+    GetField(PoolIndex), //
+    PutStatic(PoolIndex), //
     Return,//
-    Dup,
-    DupX1,
-    DupX2,
-    Dup2,
-    Dup2X1,
-    Dup2X2,
+    Dup, //
+    DupX1,//
+    DupX2,//
+    Dup2,//
+    Dup2X1,//
+    Dup2X2,//
     Pop, //
     DAdd,//
     DDiv,//
@@ -61,13 +61,13 @@ pub enum Instr {
     D2f,//
     D2l,//
     AReturn, //
-    CheckCast(PoolIndex),
+    CheckCast(PoolIndex), //
     F2i, //
     AConstNull, //
-    LoadConst(PoolIndex),
+    LoadConst(PoolIndex), //
     DCmpL,
     DCmpG,
-    ArrayLength,
+    ArrayLength, //
     AThrow,
     DALoad,//
     CALoad,//
@@ -102,18 +102,18 @@ pub enum Instr {
     I2c,//
     I2b,//
     I2f, //
-    IALoad,
+    IALoad, //
     IAStore,
     IMul,//
     IDiv,//
     IAnd, //
     INeg,//
     InstanceOf(PoolIndex),
-    InvokeDynamic(PoolIndex), //
+    InvokeDynamic(PoolIndex),
     L2i,//
     L2d,//
     L2f,//
-    LALoad,
+    LALoad,//
     LAStore,
     LAdd,//
     LAnd, //
@@ -144,7 +144,7 @@ pub enum Instr {
     Nop, //
     MonitorEnter,//
     MonitorExit,//
-    MultiANewArray {
+    MultiANewArray {//
         index: u16,
         dimensions: u8,
     },
@@ -160,10 +160,7 @@ pub enum Instr {
     ALoad(Index),//
     DLoad(Index),//
     LLoad(Index),//
-    IInc {
-        index: u16,
-        value: i16,
-    },
+    IInc { index: u16, value: i16, }, //
     IfACmpEq(BranchIndex),
     IfACmpNe(BranchIndex),
     IfICmpEq(BranchIndex),
