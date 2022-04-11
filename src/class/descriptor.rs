@@ -1,4 +1,4 @@
-use std::fmt::{Debug, format, Formatter};
+use std::fmt::{Debug, Formatter};
 
 use regex::Regex;
 
@@ -65,7 +65,7 @@ impl Descriptor {
                 out
             }
             Descriptor::Unknown(v) => format!("/* unknown type */ {}", v.clone()),
-            el => String::from(match self {
+            el => String::from(match el {
                 Descriptor::Byte => "B",
                 Descriptor::Char => "C",
                 Descriptor::Double => "D",
@@ -96,7 +96,7 @@ impl Descriptor {
                 out
             }
             Descriptor::Unknown(v) => format!("/* unknown type */ {}", v.clone()),
-            el => String::from(match self {
+            el => String::from(match el {
                 Descriptor::Byte => "byte",
                 Descriptor::Char => "char",
                 Descriptor::Double => "double",

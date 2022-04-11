@@ -1,4 +1,4 @@
-use std::io::{Cursor, Write};
+use std::io::Write;
 
 use crate::class::access::{AccessFlag, AccessFlags};
 use crate::class::attribute::{AttributeValue, CodeAttr};
@@ -147,7 +147,6 @@ impl JavaWriter {
         let control_flow_graph = gen_control_flow_graph(&instr);
         // let paths = find_paths(&control_flow_graph, 0, Vec::new());
         let mut has_values = false;
-        let is_init = method.is_init();
         for block in control_flow_graph.values() {
             let decompiled = block.decompile(&class.constant_pool)?;
             let length = decompiled.len();

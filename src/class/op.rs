@@ -1,8 +1,8 @@
-use std::io::{Cursor, Read};
+use std::io::Cursor;
 
 use crate::class::constant::PoolIndex;
 use crate::error::DecompileError;
-use crate::io::{Readable, ReadResult};
+use crate::io::Readable;
 
 #[derive(Debug, Clone,Copy)]
 pub enum ArrayType {

@@ -8,7 +8,7 @@ use crate::class::attribute::Attribute;
 use crate::class::constant::{ConstantPool, PoolIndex};
 use crate::class::descriptor::Descriptor;
 use crate::class::member::Member;
-use crate::error::{ConstantError, ReadError};
+use crate::error::ReadError;
 use crate::io::{Readable, ReadResult, VecReadableFn};
 
 pub struct SourceVersion {

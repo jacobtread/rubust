@@ -1,15 +1,10 @@
-use std::collections::hash_map::Values;
 use std::collections::HashMap;
-use std::detect::__is_feature_detected::popcnt;
-use std::env::var;
 use std::fmt::{Display, Formatter};
-use std::hash::Hasher;
 use std::io::Write;
-use std::ptr::write;
 
 use crate::class::access::AccessFlag;
 use crate::class::attribute::CodeAttr;
-use crate::class::class::{Class, ClassPath};
+use crate::class::class::ClassPath;
 use crate::class::constant::{Constant, ConstantPool, MemberReference};
 use crate::class::descriptor::Descriptor;
 use crate::class::member::Member;
@@ -80,13 +75,6 @@ impl Stack {
         }
     }
 
-    fn pop_count(&mut self, amount: usize) -> Result<(), StackError> {
-        for _ in 0..amount {
-            self.pop()?;
-        }
-        Ok(())
-    }
-
     fn push(&mut self, value: AST) {
         self.values.push(value);
     }
@@ -135,9 +123,8 @@ impl Block {
         let mut statements = ASTSet::new();
         let mut stack = Stack::new();
 
-        for (pos, code) in &self.instructions {
+        for (_, code) in &self.instructions {
             match code {
-                Instr::SALoad => {}
                 Instr::Swap => { stack.swap()?; }
                 Instr::ILoad(index) => { stack.push(AST::Variable(*index, VarType::Int)); }
                 Instr::LLoad(index) => { stack.push(AST::Variable(*index, VarType::Long)); }
@@ -188,7 +175,7 @@ impl Block {
                         None => Err(ConstantError::NotFound(*index))?,
                         Some(value) => {
                             match value {
-                                Constant::InvokeDynamic(dynamic) => {}
+                                Constant::InvokeDynamic(_) => {}
                                 _ => Err(ConstantError::ExpectedInvokeDynamic(*index))?
                             }
                         }
@@ -200,7 +187,9 @@ impl Block {
                 Instr::LStore(index) |
                 Instr::FStore(index) |
                 Instr::DStore(index) |
-                Instr::AStore(index) => { statements.push(AST::Set(*index, stack.pop_boxed()?)); }
+                Instr::AStore(index) => {
+                    statements.push(AST::Set(*index, stack.pop_boxed()?));
+                }
                 Instr::IAStore |
                 Instr::LAStore |
                 Instr::DAStore |
@@ -315,7 +304,7 @@ impl Block {
                     let value = stack.pop_boxed()?;
                     statements.push(AST::Return(value))
                 }
-                Instr::MonitorEnter | Instr::MonitorExit => { stack.pop(); }
+                Instr::MonitorEnter | Instr::MonitorExit => { stack.pop()?; }
                 Instr::Nop => {}
                 Instr::New(index) => {
                     let class = constant_pool.get_class_path_required(index)?;
@@ -545,12 +534,11 @@ impl AST {
     pub fn write_java<W: Write>(&self, o: &mut W, member: &Member, code_attr: &CodeAttr) -> WriteResult {
         let access = member.access_flags;
         match self {
-            AST::Variable(index, var_type) => {
+            AST::Variable(index, _) => {
                 if *index == 0 && !access.is_set(AccessFlag::Static) {
                     write!(o, "this")?;
                 } else {
-                    println!("{}",var_type);
-                    write!(o, "{} var{} THIS is var", var_type, index)?;
+                    write!(o, "var{}", index)?;
                 }
             }
             AST::Set(index, value) => {
@@ -698,12 +686,12 @@ impl AST {
                 write!(o, " instanceof {}", class.name)?;
             }
             AST::Comparison(mode, left, right) => {
-                left.write_java(o, member, code_attr);
+                left.write_java(o, member, code_attr)?;
                 write!(o, " {} ", match mode {
                     ComparisonMode::Greater => ">",
                     ComparisonMode::Less => "<"
                 })?;
-                right.write_java(o, member, code_attr);
+                right.write_java(o, member, code_attr)?;
             }
             AST::SignedComparison(_, _) => unimplemented!(),
             AST::PrimitiveCast { value, primitive } => {
@@ -730,9 +718,9 @@ impl AST {
                 if let Descriptor::Array(array_desc) = descriptor {
                     let mut dim = *dimensions;
                     if array_desc.dimensions != dim {
-                        dim == array_desc.dimensions;
+                        dim = array_desc.dimensions;
                     }
-                    write!(o, "new {}{}", array_desc.descriptor.to_java(), "[]".repeat(dim as usize));
+                    write!(o, "new {}{}", array_desc.descriptor.to_java(), "[]".repeat(dim as usize))?;
                 } else {
                     write!(o, "/* bad array descriptor */")?;
                 }
