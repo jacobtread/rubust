@@ -1,12 +1,14 @@
 use std::collections::hash_map::Values;
 use std::collections::HashMap;
 use std::detect::__is_feature_detected::popcnt;
+use std::env::var;
 use std::fmt::{Display, Formatter};
 use std::hash::Hasher;
 use std::io::Write;
 use std::ptr::write;
 
 use crate::class::access::AccessFlag;
+use crate::class::attribute::CodeAttr;
 use crate::class::class::{Class, ClassPath};
 use crate::class::constant::{Constant, ConstantPool, MemberReference};
 use crate::class::descriptor::Descriptor;
@@ -32,7 +34,7 @@ impl Display for VarType {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}",
                match self {
-                   VarType::Reference => panic!("not enough context to print reference"),
+                   VarType::Reference => "ref",
                    VarType::Int => "int",
                    VarType::Float => "float",
                    VarType::Double => "double",
@@ -540,14 +542,15 @@ pub enum AST {
 }
 
 impl AST {
-    pub fn write_java<W: Write>(&self, o: &mut W, member: &Member) -> WriteResult {
+    pub fn write_java<W: Write>(&self, o: &mut W, member: &Member, code_attr: &CodeAttr) -> WriteResult {
         let access = member.access_flags;
         match self {
             AST::Variable(index, var_type) => {
                 if *index == 0 && !access.is_set(AccessFlag::Static) {
                     write!(o, "this")?;
                 } else {
-                    write!(o, "{} var{}", var_type, index)?;
+                    println!("{}",var_type);
+                    write!(o, "{} var{} THIS is var", var_type, index)?;
                 }
             }
             AST::Set(index, value) => {
@@ -556,75 +559,75 @@ impl AST {
                 } else {
                     write!(o, "var{} = ", index)?;
                 }
-                value.write_java(o, member)?;
+                value.write_java(o, member, code_attr)?;
                 write!(o, ";")?;
             }
             AST::FieldGet(field, reference) => {
-                reference.write_java(o, member)?;
+                reference.write_java(o, member, code_attr)?;
                 let name = &field.name_and_type.name;
                 write!(o, ".{}", name)?;
             }
             AST::FieldSet(field, reference, value) => {
-                reference.write_java(o, member)?;
+                reference.write_java(o, member, code_attr)?;
                 let name = &field.name_and_type.name;
                 write!(o, ".{} = ", name)?;
-                value.write_java(o, member)?;
+                value.write_java(o, member, code_attr)?;
                 write!(o, ";")?;
             }
             AST::Mul(left, right) => {
-                left.write_java(o, member)?;
+                left.write_java(o, member, code_attr)?;
                 write!(o, " * ")?;
-                right.write_java(o, member)?;
+                right.write_java(o, member, code_attr)?;
             }
             AST::Div(left, right) => {
-                left.write_java(o, member)?;
+                left.write_java(o, member, code_attr)?;
                 write!(o, " / ")?;
-                right.write_java(o, member)?;
+                right.write_java(o, member, code_attr)?;
             }
             AST::Sub(left, right) => {
-                left.write_java(o, member)?;
+                left.write_java(o, member, code_attr)?;
                 write!(o, " - ")?;
-                right.write_java(o, member)?;
+                right.write_java(o, member, code_attr)?;
             }
             AST::Add(left, right) => {
-                left.write_java(o, member)?;
+                left.write_java(o, member, code_attr)?;
                 write!(o, " + ")?;
-                right.write_java(o, member)?;
+                right.write_java(o, member, code_attr)?;
             }
             AST::Xor(left, right) => {
-                left.write_java(o, member)?;
+                left.write_java(o, member, code_attr)?;
                 write!(o, " ^ ")?;
-                right.write_java(o, member)?;
+                right.write_java(o, member, code_attr)?;
             }
             AST::BitwiseAnd(left, right) => {
-                left.write_java(o, member)?;
+                left.write_java(o, member, code_attr)?;
                 write!(o, " & ")?;
-                right.write_java(o, member)?;
+                right.write_java(o, member, code_attr)?;
             }
             AST::BitwiseOr(left, right) => {
-                left.write_java(o, member)?;
+                left.write_java(o, member, code_attr)?;
                 write!(o, " | ")?;
-                right.write_java(o, member)?;
+                right.write_java(o, member, code_attr)?;
             }
             AST::BitwiseShl(left, right) => {
-                left.write_java(o, member)?;
+                left.write_java(o, member, code_attr)?;
                 write!(o, " << ")?;
-                right.write_java(o, member)?;
+                right.write_java(o, member, code_attr)?;
             }
             AST::BitwiseShr(left, right) => {
-                left.write_java(o, member)?;
+                left.write_java(o, member, code_attr)?;
                 write!(o, " >> ")?;
-                right.write_java(o, member)?;
+                right.write_java(o, member, code_attr)?;
             }
             AST::LogicalShr(left, right) => {
-                left.write_java(o, member)?;
+                left.write_java(o, member, code_attr)?;
                 write!(o, " >>> ")?;
-                right.write_java(o, member)?;
+                right.write_java(o, member, code_attr)?;
             }
             AST::Remainder(left, right) => {
-                left.write_java(o, member)?;
+                left.write_java(o, member, code_attr)?;
                 write!(o, " % ")?;
-                right.write_java(o, member)?;
+                right.write_java(o, member, code_attr)?;
             }
             AST::Increment { index, value } => {
                 if *value == 1 {
@@ -636,67 +639,81 @@ impl AST {
             AST::Null => { write!(o, "null")?; }
             AST::Negate(value) => {
                 write!(o, "-")?;
-                value.write_java(o, member)?;
+                value.write_java(o, member, code_attr)?;
             }
             AST::New(class) => {
                 write!(o, "new {}()", class.name)?;
             }
             AST::StaticSet(field, value) => {
                 write!(o, "{}.{} = ", field.class.name, field.name_and_type.name)?;
-                value.write_java(o, member)?;
+                value.write_java(o, member, code_attr)?;
             }
             AST::StaticGet(field) => {
                 write!(o, "{}.{}", field.class.name, field.name_and_type.name)?;
             }
             AST::MethodCall { member: method, reference, args } => {
-                reference.write_java(o, member)?;
+                reference.write_java(o, member, code_attr)?;
                 let name = &method.name_and_type.name;
-                write!(o, ".{}(", name)?;
+                if name == "<init>" {
+                    write!(o, "(")?;
+                } else {
+                    write!(o, ".{}(", name)?;
+                }
                 if !args.is_empty() {
                     let max = args.len() - 1;
                     for (i, value) in args.iter().enumerate() {
-                        value.write_java(o, member)?;
+                        value.write_java(o, member, code_attr)?;
                         if i != max {
                             write!(o, ", ")?;
                         }
                     }
                 }
-                write!(o, ");")?;
+                write!(o, ")")?;
+                if let Descriptor::Method(met) = &method.name_and_type.descriptor {
+                    if let Descriptor::Void = *met.return_type  {
+                        write!(o, ";")?;
+                    }
+                }
             }
             AST::StaticCall { member: method, args } => {
                 write!(o, "{}.{}(", method.class.name, method.name_and_type.name)?;
                 if !args.is_empty() {
                     let max = args.len() - 1;
                     for (i, value) in args.iter().enumerate() {
-                        value.write_java(o, member)?;
+                        value.write_java(o, member, code_attr)?;
                         if i != max {
                             write!(o, ", ")?;
                         }
                     }
                 }
-                write!(o, ");")?;
+                write!(o, ")")?;
+                if let Descriptor::Method(met) = &method.name_and_type.descriptor {
+                    if let Descriptor::Void = *met.return_type  {
+                        write!(o, ";")?;
+                    }
+                }
             }
             AST::InstanceOf(value, class) => {
-                value.write_java(o, member)?;
+                value.write_java(o, member, code_attr)?;
                 write!(o, " instanceof {}", class.name)?;
             }
             AST::Comparison(mode, left, right) => {
-                left.write_java(o, member);
+                left.write_java(o, member, code_attr);
                 write!(o, " {} ", match mode {
                     ComparisonMode::Greater => ">",
                     ComparisonMode::Less => "<"
                 })?;
-                right.write_java(o, member);
+                right.write_java(o, member, code_attr);
             }
             AST::SignedComparison(_, _) => unimplemented!(),
             AST::PrimitiveCast { value, primitive } => {
                 write!(o, "(({}) (", primitive)?;
-                value.write_java(o, member)?;
+                value.write_java(o, member, code_attr)?;
                 write!(o, "))")?;
             }
             AST::ClassCast { value, class } => {
                 write!(o, "(({}) (", class.name)?;
-                value.write_java(o, member)?;
+                value.write_java(o, member, code_attr)?;
                 write!(o, "))")?;
             }
             AST::StringConst(value) => { write!(o, "\"{}\"", value)?; }
@@ -707,7 +724,7 @@ impl AST {
             AST::LongConstant(value) => { write!(o, "{}L", value)?; }
             AST::DoubleConstant(value) => { write!(o, "{}D", value)?; }
             AST::VoidReturn => { write!(o, "return;")?; }
-            AST::Return(value) => { value.write_java(o, member)?; }
+            AST::Return(value) => { value.write_java(o, member, code_attr)?; }
             AST::NewArrayMulti {array_type, dimensions} => {
                 let descriptor = Descriptor::parse(array_type.name.as_str());
                 if let Descriptor::Array(array_desc) = descriptor {

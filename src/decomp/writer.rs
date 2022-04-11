@@ -141,24 +141,34 @@ impl JavaWriter {
     }
 
     fn write_code<W: Write>(&self, class: &Class, method: &Member, code_attr: &CodeAttr, o: &mut W) -> WriteResult {
+        write!(o, ") {{")?;
         let instr = parse_code(code_attr.code.clone())
             .map_err(|_| WriteError::BadCodeAttribute)?;
         let control_flow_graph = gen_control_flow_graph(&instr);
         // let paths = find_paths(&control_flow_graph, 0, Vec::new());
+        let mut has_values = false;
+        let is_init = method.is_init();
         for block in control_flow_graph.values() {
             let decompiled = block.decompile(&class.constant_pool)?;
             let length = decompiled.len();
             for (index, statement) in decompiled.iter().enumerate() {
                 if index == length - 1 {
-                    if let AST::VoidReturn = statement {
-                        break;
+                    match statement {
+                        AST::VoidReturn => break,
+                        _ => {}
                     }
                 } else {
-                    write!(o, "      ")?;
-                    statement.write_java(o, method)?;
-                    writeln!(o)?;
+
+                    write!(o, "\n      ")?;
+                    statement.write_java(o, method, code_attr)?;
+                    if !has_values { has_values = true; }
                 }
             }
+        }
+        if has_values {
+            write!(o, "\n    }}\n\n")?;
+        } else {
+            write!(o, "}}\n\n")?;
         }
         Ok(())
     }
@@ -191,7 +201,6 @@ impl JavaWriter {
             }
         }
 
-        write!(o, ") {{\n")?;
 
         let code_attr = &method.attributes
             .iter()
@@ -205,8 +214,6 @@ impl JavaWriter {
             }
             _ => Err(WriteError::BadCodeAttribute)?
         }
-
-        write!(o, "    }}\n")?;
         Ok(())
     }
 }
