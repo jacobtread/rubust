@@ -8,7 +8,7 @@ use crate::class::class::ClassPath;
 use crate::class::constant::{Constant, ConstantPool, MemberReference};
 use crate::class::descriptor::Descriptor;
 use crate::class::member::Member;
-use crate::class::op::{ArrayType, Instr, InstrSet};
+use crate::class::op::{ArrayType, BranchIndex, Instr, InstrSet};
 use crate::decomp::writer::WriteResult;
 use crate::error::{ConstantError, DecompileError, StackError};
 
@@ -430,6 +430,67 @@ impl Block {
                     let key = stack.pop_boxed()?;
                     statements.push(AST::SwitchTable { key, default: *default, low: *low, high: *high, offsets: offsets.clone() })
                 }
+                Instr::IfICmpEq(index) | Instr::IfACmpEq(index) => {
+                    let left = stack.pop_boxed()?;
+                    let right = stack.pop_boxed()?;
+                    statements.push(AST::IfEqual(left, right, *index))
+                }
+                Instr::IfICmpNe(index) | Instr::IfACmpNe(index) => {
+                    let left = stack.pop_boxed()?;
+                    let right = stack.pop_boxed()?;
+                    statements.push(AST::IfNotEqual(left, right, *index))
+                }
+                Instr::IfICmpGt(index) => {
+                    let left = stack.pop_boxed()?;
+                    let right = stack.pop_boxed()?;
+                    statements.push(AST::IfGreaterThan(left, right, *index))
+                }
+                Instr::IfICmpGe(index) => {
+                    let left = stack.pop_boxed()?;
+                    let right = stack.pop_boxed()?;
+                    statements.push(AST::IfGreaterThanOrEqual(left, right, *index))
+                }
+                Instr::IfICmpLt(index) => {
+                    let left = stack.pop_boxed()?;
+                    let right = stack.pop_boxed()?;
+                    statements.push(AST::IfLessThan(left, right, *index))
+                }
+                Instr::IfICmpLe(index) => {
+                    let left = stack.pop_boxed()?;
+                    let right = stack.pop_boxed()?;
+                    statements.push(AST::IfLessThanOrEqual(left, right, *index))
+                }
+                Instr::IfEq(index) => {
+                    let value = stack.pop_boxed()?;
+                    statements.push(AST::IfEq(value, *index))
+                }
+                Instr::IfGe(index) => {
+                    let value = stack.pop_boxed()?;
+                    statements.push(AST::IfGe(value, *index))
+                }
+                Instr::IfGt(index) => {
+                    let value = stack.pop_boxed()?;
+                    statements.push(AST::IfGt(value, *index))
+                }
+                Instr::IfLe(index) => {
+                    let value = stack.pop_boxed()?;
+                    statements.push(AST::IfLe(value, *index))
+                }
+                Instr::IfLt(index) => {
+                    let value = stack.pop_boxed()?;
+                    statements.push(AST::IfLt(value, *index))
+                }
+                Instr::IfNonNull(index) => {
+                    let value = stack.pop_boxed()?;
+                    statements.push(AST::IfNonnull(value, *index))
+                }
+                Instr::IfNull(index) => {
+                    let value = stack.pop_boxed()?;
+                    statements.push(AST::IfNull(value, *index))
+                }
+                Instr::JSr(index) => {
+                    stack.push(AST::JSR(*index));
+                }
                 _ => {}
             };
         }
@@ -528,6 +589,22 @@ pub enum AST {
     LogicalShr(Box<AST>, Box<AST>),
     Remainder(Box<AST>, Box<AST>),
     Increment { index: u16, value: i16 },
+    // Conditionals
+    IfEqual(Box<AST>, Box<AST>, BranchIndex),
+    IfNotEqual(Box<AST>, Box<AST>, BranchIndex),
+    IfGreaterThanOrEqual(Box<AST>, Box<AST>, BranchIndex),
+    IfGreaterThan(Box<AST>, Box<AST>, BranchIndex),
+    IfLessThan(Box<AST>, Box<AST>, BranchIndex),
+    IfLessThanOrEqual(Box<AST>, Box<AST>, BranchIndex),
+    IfEq(Box<AST>, BranchIndex),
+    IfGe(Box<AST>, BranchIndex),
+    IfGt(Box<AST>, BranchIndex),
+    IfLe(Box<AST>, BranchIndex),
+    IfLt(Box<AST>, BranchIndex),
+    IfNe(Box<AST>, BranchIndex),
+    IfNonnull(Box<AST>, BranchIndex),
+    IfNull(Box<AST>, BranchIndex),
+    JSR(BranchIndex),
 }
 
 impl AST {

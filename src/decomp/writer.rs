@@ -154,22 +154,22 @@ impl JavaWriter {
         for key in keys {
             let block: &Block = control_flow_graph.get(key)
                 .expect("expected constant pool to contain index");
-            println!("\n{}: {:?}", key, block);
-            // let decompiled = block.decompile(&class.constant_pool)?;
-            // let length = decompiled.len();
-            // for (index, statement) in decompiled.iter().enumerate() {
-            //     if index == length - 1 {
-            //         match statement {
-            //             AST::VoidReturn => break,
-            //             _ => {}
-            //         }
-            //     } else {
-            //
-            //         write!(o, "\n      ")?;
-            //         statement.write_java(o, method, code_attr)?;
-            //         if !has_values { has_values = true; }
-            //     }
-            // }
+            // println!("\n{}: {:?}", key, block);
+            let decompiled = block.decompile(&class.constant_pool)?;
+            let length = decompiled.len();
+            for (index, statement) in decompiled.iter().enumerate() {
+                if index == length - 1 {
+                    match statement {
+                        AST::VoidReturn => break,
+                        _ => {}
+                    }
+                } else {
+
+                    write!(o, "\n      ")?;
+                    statement.write_java(o, method, code_attr)?;
+                    if !has_values { has_values = true; }
+                }
+            }
         }
         if has_values {
             write!(o, "\n    }}\n\n")?;
