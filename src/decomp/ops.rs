@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 
 use crate::class::class::ClassPath;
-use crate::class::constant::{Constant, ConstantPool, NameAndType};
+use crate::class::constant::{Constant, ConstantPool, MemberReference, NameAndType};
 use crate::class::descriptor::{Descriptor, MethodDescriptor};
 use crate::class::member::Member;
 use crate::class::op::{Instr, InstrSet};
@@ -202,15 +202,13 @@ pub enum AST {
         value: Box<AST>,
         cast_type: ClassPath,
     },
-    Static {
-        field_data: Descriptor,
-    },
+    Static(MemberReference),
     Variable {
         index: u16,
         var_type: VarType,
     },
     Call {
-        method_data: NameAndType,
+        method_data: MemberReference,
         reference: Box<AST>,
         args: Vec<AST>,
     },
@@ -274,9 +272,8 @@ pub fn decompile_block(
                 });
             }
             Instr::InvokeSpecial(index) | Instr::InvokeVirtual(index) => {
-                let method = constant_pool.get_member_ref(*index)?;
-                let nat = constant_pool.get_name_and_type(method.name_and_type_info)?;
-                let descriptor = &nat.descriptor;
+                let member = constant_pool.get_member_ref(*index)?;
+                let descriptor = &member.name_and_type.descriptor;
                 if let Descriptor::Method(method) = descriptor {
                     let mut args = Vec::new();
                     for _ in 0..method.parameters.len() {
@@ -286,13 +283,13 @@ pub fn decompile_block(
                     let reference = Box::new(stack.pop().ok_or(DecompileError::EmptyStack)?);
                     if let Descriptor::Void = *method.return_type {
                         statements.push(AST::Call {
-                            method_data: nat,
+                            method_data: member,
                             reference,
                             args,
                         });
                     } else {
                         stack.push(AST::Call {
-                            method_data: nat,
+                            method_data: member,
                             reference,
                             args,
                         });
@@ -315,10 +312,8 @@ pub fn decompile_block(
                 });
             }
             Instr::GetStatic(index) => {
-                let field = constant_pool.get_member_ref(*index)?;
-                let nat = constant_pool.get_name_and_type(field.name_and_type_info)?;
-                let descriptor = nat.descriptor;
-                stack.push(AST::Static { field_data: descriptor });
+                let member = constant_pool.get_member_ref(*index)?;
+                stack.push(AST::Static(member));
             }
             Instr::ArrayLength => {
                 let reference = Box::new(stack.pop().ok_or(DecompileError::EmptyStack)?);

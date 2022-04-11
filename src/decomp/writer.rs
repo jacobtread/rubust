@@ -147,10 +147,18 @@ impl JavaWriter {
         // let paths = find_paths(&control_flow_graph, 0, Vec::new());
         let is_static = method.access_flags.is_set(AccessFlag::Static);
         for block in control_flow_graph.values() {
-            for statement in decompile_block(block, &class.constant_pool)? {
-                write!(o, "      ")?;
-                self.write_ast(&statement, class, is_static, method.is_init(), o)?;
-                write!(o, "\n")?;
+            let decompiled = decompile_block(block, &class.constant_pool)?;
+            let length = decompiled.len();
+            for (index, statement) in decompiled.iter().enumerate() {
+                if index == length - 1 {
+                    if let AST::VoidReturn = statement {
+                        break;
+                    }
+                } else {
+                    write!(o, "      ")?;
+                    self.write_ast(statement, class, is_static, method.is_init(), o)?;
+                    writeln!(o)?;
+                }
             }
         }
         Ok(())
@@ -180,7 +188,7 @@ impl JavaWriter {
                 args,
             } => {
                 self.write_ast(reference, class, is_static, is_init, o)?;
-                let name = &method_data.name;
+                let name = &method_data.name_and_type.name;
                 write!(o, ".{}(", name)?;
                 let len = args.len();
                 for (i, value) in args.iter().enumerate() {
@@ -195,14 +203,13 @@ impl JavaWriter {
                 self.write_ast(lhs, class, is_static, is_init, o)?;
                 write!(o, " * ")?;
                 self.write_ast(rhs, class, is_static, is_init, o)?;
+                writeln!(o)?;
             }
             AST::ConstInt(value) => write!(o, "{}", value)?,
             AST::ConstFloat(value) => write!(o, "{}", value)?,
             AST::ConstString(value) => write!(o, "\"{}\"", value)?,
             AST::VoidReturn => {
-                if !is_init {
-                    write!(o, "return;")?
-                }
+                writeln!(o, "return;\n")?
             }
             AST::BasicCast { cast_type, value } => {
                 write!(o, "(({}) (", cast_type)?;
@@ -214,7 +221,11 @@ impl JavaWriter {
                 self.write_ast(value, class, is_static, is_init, o)?;
                 write!(o, "))")?;
             }
-            AST::Static { field_data } => {}
+            AST::Static(member) => {
+                let ty = &member.name_and_type;
+
+                write!(o, "{}.{}", member.class.name, ty.name)?;
+            }
             v => write!(o, "/* unknown */ {:?}", v)?,
         }
         Ok(())
