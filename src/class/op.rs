@@ -81,12 +81,12 @@ pub enum Instr {
     FAStore, //
     ANewArray(PoolIndex), //
     DMul, //
-    DNeg,
+    DNeg,//
     DRem,
     DReturn, //
     FSub, //
     FMul, //
-    FNeg,
+    FNeg,//
     FRem,
     FReturn,//
     FCmpL,//
@@ -106,37 +106,37 @@ pub enum Instr {
     IAStore,
     IMul,//
     IDiv,//
-    IAnd,
-    INeg,
+    IAnd, //
+    INeg,//
     InstanceOf(PoolIndex),
-    InvokeDynamic(PoolIndex),
+    InvokeDynamic(PoolIndex), //
     L2i,//
     L2d,//
     L2f,//
     LALoad,
     LAStore,
     LAdd,//
-    LAnd,
-    LOr,
-    LXOr,
+    LAnd, //
+    LOr,//
+    LXOr,//
     LSub,//
     LMul,//
     LDiv,//
     ISub,//
     IRem,
-    LNeg,
-    IShL,
-    IShR,
-    IUShR,
-    IOr,
-    IXOr,
+    LNeg,//
+    IShL,//
+    IShR, //
+    IUShR, //
+    IOr,//
+    IXOr,//
     LCmp, //
     IReturn,//
     LReturn, //
     LRem,
-    LShL,
-    LShR,
-    LUShR,
+    LShL, //
+    LShR, //
+    LUShR, //
     LookupSwitch {
         default: u32,
         pairs: Vec<(i32, u32)>,

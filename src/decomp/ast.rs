@@ -271,6 +271,40 @@ impl Block {
                     let right = stack.pop_boxed()?;
                     stack.push(AST::SignedComparison(left, right))
                 }
+                Instr::IAnd | Instr::LAnd => {
+                    let left = stack.pop_boxed()?;
+                    let right = stack.pop_boxed()?;
+                    stack.push(AST::BitwiseAnd(left, right))
+                }
+                Instr::IOr | Instr::LOr => {
+                    let left = stack.pop_boxed()?;
+                    let right = stack.pop_boxed()?;
+                    stack.push(AST::BitwiseOr(left, right))
+                }
+                Instr::IXOr | Instr::LXOr => {
+                    let left = stack.pop_boxed()?;
+                    let right = stack.pop_boxed()?;
+                    stack.push(AST::Xor(left, right))
+                }
+                Instr::IShL | Instr::LShL => {
+                    let left = stack.pop_boxed()?;
+                    let right = stack.pop_boxed()?;
+                    stack.push(AST::BitwiseShl(left, right))
+                }
+                Instr::IShR | Instr::LShR => {
+                    let left = stack.pop_boxed()?;
+                    let right = stack.pop_boxed()?;
+                    stack.push(AST::BitwiseShr(left, right))
+                }
+                Instr::IUShR | Instr::LUShR => {
+                    let left = stack.pop_boxed()?;
+                    let right = stack.pop_boxed()?;
+                    stack.push(AST::LogicalShr(left, right))
+                }
+                Instr::INeg | Instr::FNeg | Instr::DNeg | Instr::LNeg => {
+                    let value = stack.pop_boxed()?;
+                    stack.push(AST::Negate(value))
+                }
                 _ => {}
             };
         }
@@ -339,8 +373,15 @@ pub enum AST {
     VoidReturn,
     Return(Box<AST>),
     Instance,
+    Negate(Box<AST>),
+    Xor(Box<AST>, Box<AST>),
+    BitwiseAnd(Box<AST>, Box<AST>),
+    BitwiseOr(Box<AST>, Box<AST>),
+    BitwiseShl(Box<AST>, Box<AST>),
+    BitwiseShr(Box<AST>, Box<AST>),
+    LogicalShr(Box<AST>, Box<AST>),
+    Remainder(Box<AST>, Box<AST>)
 }
-
 
 pub fn get_index_for_pos(instructions: &InstrSet, pos: u16) -> Option<usize> {
     for (i, (i_pos, _)) in instructions.iter().enumerate() {
