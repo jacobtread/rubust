@@ -175,6 +175,18 @@ impl Block {
                         Err(DecompileError::ExpectedMethodDescriptor)?;
                     }
                 }
+                Instr::InvokeDynamic(index) => {
+                    match constant_pool.inner.get(index) {
+                        None => Err(ConstantError::NotFound(*index))?,
+                        Some(value) => {
+                            match value {
+                                Constant::InvokeDynamic(dynamic) => {}
+                                _ => Err(ConstantError::ExpectedInvokeDynamic(*index))?
+                            }
+                        }
+                    }
+                    unimplemented!("invoke dynamic not implemented yet")
+                }
                 Instr::Return => { statements.push(AST::VoidReturn); }
                 Instr::IStore(index) |
                 Instr::LStore(index) |
@@ -266,6 +278,11 @@ impl Block {
                     stack.push(AST::Add(left, right));
                 }
                 Instr::ISub | Instr::FSub | Instr::DSub | Instr::LSub => {
+                    let left = stack.pop_boxed()?;
+                    let right = stack.pop_boxed()?;
+                    stack.push(AST::Sub(left, right));
+                }
+                Instr::IRem | Instr::FRem | Instr::DRem | Instr::LRem => {
                     let left = stack.pop_boxed()?;
                     let right = stack.pop_boxed()?;
                     stack.push(AST::Sub(left, right));
@@ -408,6 +425,14 @@ impl Block {
                     let reference = stack.pop_boxed()?;
                     stack.push(AST::InstanceOf(reference, class))
                 }
+                Instr::LookupSwitch { default, pairs } => {
+                    let key = stack.pop_boxed()?;
+                    statements.push(AST::SwitchLookup { key, default: *default, pairs: pairs.clone() })
+                }
+                Instr::TableSwitch { default, low, high, offsets } => {
+                    let key = stack.pop_boxed()?;
+                    statements.push(AST::SwitchTable { key, default: *default, low: *low, high: *high, offsets: offsets.clone() })
+                }
                 _ => {}
             };
         }
@@ -474,6 +499,18 @@ pub enum AST {
         reference: Box<AST>,
         index: Box<AST>,
         value: Box<AST>,
+    },
+    SwitchLookup {
+        key: Box<AST>,
+        default: u32,
+        pairs: Vec<(i32, u32)>,
+    },
+    SwitchTable {
+        key: Box<AST>,
+        default: u32,
+        low: u32,
+        high: u32,
+        offsets: Vec<u32>,
     },
     StringConst(String),
     IntegerConstant(i32),

@@ -22,7 +22,7 @@ pub type BranchIndex = u16;
 #[derive(Debug, Clone)]
 pub enum Instr {
     SALoad, //
-    TableSwitch {
+    TableSwitch { //
         default: u32,
         low: u32,
         high: u32,
@@ -65,8 +65,8 @@ pub enum Instr {
     F2i, //
     AConstNull, //
     LoadConst(PoolIndex), //
-    DCmpL,
-    DCmpG,
+    DCmpL,//
+    DCmpG, //
     ArrayLength, //
     AThrow,
     DALoad,//
@@ -82,12 +82,12 @@ pub enum Instr {
     ANewArray(PoolIndex), //
     DMul, //
     DNeg,//
-    DRem,
+    DRem, //
     DReturn, //
     FSub, //
     FMul, //
     FNeg,//
-    FRem,
+    FRem, //
     FReturn,//
     FCmpL,//
     FCmpG,//
@@ -109,12 +109,12 @@ pub enum Instr {
     IAnd, //
     INeg,//
     InstanceOf(PoolIndex), //
-    InvokeDynamic(PoolIndex),
+    InvokeDynamic(PoolIndex),//
     L2i,//
     L2d,//
     L2f,//
     LALoad,//
-    LAStore,
+    LAStore, //
     LAdd,//
     LAnd, //
     LOr,//
@@ -123,7 +123,7 @@ pub enum Instr {
     LMul,//
     LDiv,//
     ISub,//
-    IRem,
+    IRem,//
     LNeg,//
     IShL,//
     IShR, //
@@ -133,11 +133,11 @@ pub enum Instr {
     LCmp, //
     IReturn,//
     LReturn, //
-    LRem,
+    LRem,//
     LShL, //
     LShR, //
     LUShR, //
-    LookupSwitch {
+    LookupSwitch { //
         default: u32,
         pairs: Vec<(i32, u32)>,
     },

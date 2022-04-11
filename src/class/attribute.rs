@@ -1,8 +1,9 @@
 use std::io::{Cursor, Read};
+
 use crate::class::access::AccessFlags;
 use crate::class::constant::{ConstantPool, PoolIndex};
 use crate::error::ReadError;
-use crate::io::{Readable, VecReadableBytesSize, VecReadableFn, VecReadableSize};
+use crate::io::{Readable, ReadResult, VecReadableBytesSize, VecReadableFn, VecReadableSize};
 use crate::readable_struct;
 
 readable_struct! {
@@ -58,6 +59,14 @@ pub struct Attribute {
     pub value: AttributeValue,
 }
 
+#[derive(Debug, Clone)]
+#[allow(dead_code)]
+struct BootstrapMethod {
+    method_ref: PoolIndex,
+    arguments: Vec<PoolIndex>,
+}
+
+
 impl Attribute {
     pub fn read<B: Read>(
         i: &mut B,
@@ -110,7 +119,7 @@ pub enum AttributeValue {
     RuntimeInvisibleParameterAnnotations,
     AnnotationDefault(Vec<u8>),
     StackMapTable,
-    BootstrapMethods,
+    BootstrapMethods(Vec<BootstrapMethod>),
     RuntimeVisibleTypeAnnotations,
     RuntimeInvisibleTypeAnnotations,
     MethodParameters(Vec<MethodParameter>),
@@ -151,6 +160,11 @@ impl AttributeValue {
             "AnnotationDefault" => AttributeValue::AnnotationDefault(data.to_vec()),
             "EnclosingMethod" => AttributeValue::EnclosingMethod(EnclosingMethod::read(c)?),
             "LocalVariableTypeTable" => AttributeValue::LocalVariableTable(u16::read_vec(c)?),
+            "BootstrapMethods" => AttributeValue::BootstrapMethods(u16::read_vec_closure(c, |r| -> ReadResult<BootstrapMethod> {
+                let method_ref = PoolIndex::read(c)?;
+                let arguments = u16::read_vec(c)?;
+                Ok(BootstrapMethod { method_ref, arguments })
+            })?),
             _ => AttributeValue::Unknown(data.to_vec())
         })
     }

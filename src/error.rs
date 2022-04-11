@@ -75,4 +75,6 @@ pub enum ConstantError {
     InvalidClassReference2(PoolIndex),
     #[error("expected value at index {0} to be method/interface ref")]
     ExpectedMethodRef(PoolIndex),
+    #[error("expected value at index {0} to be invoke dynamic")]
+    ExpectedInvokeDynamic(PoolIndex),
 }
