@@ -21,146 +21,146 @@ pub type BranchIndex = u16;
 
 #[derive(Debug, Clone)]
 pub enum Instr {
-    SALoad, //
-    TableSwitch { //
+    SALoad, 
+    TableSwitch { 
         default: u32,
         low: u32,
         high: u32,
         offsets: Vec<u32>,
     },
-    Swap, //
-    SAStore, //
-    BIPush(i8), //
-    SIPush(i16), //
-    NewArray(ArrayType), //
-    Pop2,//
-    IConst(i32),//
-    FConst(f32),//
-    DConst(f64),//
-    LConst(i64),//
-    IAdd,//
-    FAdd,//
-    InvokeSpecial(PoolIndex), //
-    InvokeStatic(PoolIndex), //
-    InvokeVirtual(PoolIndex), //
+    Swap, 
+    SAStore, 
+    BIPush(i8), 
+    SIPush(i16), 
+    NewArray(ArrayType), 
+    Pop2,
+    IConst(i32),
+    FConst(f32),
+    DConst(f64),
+    LConst(i64),
+    IAdd,
+    FAdd,
+    InvokeSpecial(PoolIndex), 
+    InvokeStatic(PoolIndex), 
+    InvokeVirtual(PoolIndex), 
     InvokeInterface(PoolIndex),
-    PutField(PoolIndex), //
-    GetField(PoolIndex), //
-    PutStatic(PoolIndex), //
-    Return,//
-    Dup, //
-    DupX1,//
-    DupX2,//
-    Dup2,//
-    Dup2X1,//
-    Dup2X2,//
-    Pop, //
-    DAdd,//
-    DDiv,//
-    D2i,//
-    D2f,//
-    D2l,//
-    AReturn, //
-    CheckCast(PoolIndex), //
-    F2i, //
-    AConstNull, //
-    LoadConst(PoolIndex), //
-    DCmpL,//
-    DCmpG, //
-    ArrayLength, //
+    PutField(PoolIndex), 
+    GetField(PoolIndex), 
+    PutStatic(PoolIndex), 
+    Return,
+    Dup, 
+    DupX1,
+    DupX2,
+    Dup2,
+    Dup2X1,
+    Dup2X2,
+    Pop, 
+    DAdd,
+    DDiv,
+    D2i,
+    D2f,
+    D2l,
+    AReturn, 
+    CheckCast(PoolIndex), 
+    F2i, 
+    AConstNull, 
+    LoadConst(PoolIndex), 
+    DCmpL,
+    DCmpG, 
+    ArrayLength, 
     AThrow,
-    DALoad,//
-    CALoad,//
-    BALoad,//
-    AALoad,//
-    FALoad,//
-    DAStore,//
-    CAStore,//
-    BAStore,//
-    AAStore,//
-    FAStore, //
-    ANewArray(PoolIndex), //
-    DMul, //
-    DNeg,//
-    DRem, //
-    DReturn, //
-    FSub, //
-    FMul, //
-    FNeg,//
-    FRem, //
-    FReturn,//
-    FCmpL,//
-    FCmpG,//
-    DSub, //
-    FDiv, //
-    GetStatic(PoolIndex),//
-    F2l,//
-    F2d,//
-    I2l,//
-    I2d,//
-    I2s,//
-    I2c,//
-    I2b,//
-    I2f, //
-    IALoad, //
+    DALoad,
+    CALoad,
+    BALoad,
+    AALoad,
+    FALoad,
+    DAStore,
+    CAStore,
+    BAStore,
+    AAStore,
+    FAStore, 
+    ANewArray(PoolIndex), 
+    DMul, 
+    DNeg,
+    DRem, 
+    DReturn, 
+    FSub, 
+    FMul, 
+    FNeg,
+    FRem, 
+    FReturn,
+    FCmpL,
+    FCmpG,
+    DSub, 
+    FDiv, 
+    GetStatic(PoolIndex),
+    F2l,
+    F2d,
+    I2l,
+    I2d,
+    I2s,
+    I2c,
+    I2b,
+    I2f, 
+    IALoad, 
     IAStore,
-    IMul,//
-    IDiv,//
-    IAnd, //
-    INeg,//
-    InstanceOf(PoolIndex), //
-    InvokeDynamic(PoolIndex),//
-    L2i,//
-    L2d,//
-    L2f,//
-    LALoad,//
-    LAStore, //
-    LAdd,//
-    LAnd, //
-    LOr,//
-    LXOr,//
-    LSub,//
-    LMul,//
-    LDiv,//
-    ISub,//
-    IRem,//
-    LNeg,//
-    IShL,//
-    IShR, //
-    IUShR, //
-    IOr,//
-    IXOr,//
-    LCmp, //
-    IReturn,//
-    LReturn, //
-    LRem,//
-    LShL, //
-    LShR, //
-    LUShR, //
-    LookupSwitch { //
+    IMul,
+    IDiv,
+    IAnd, 
+    INeg,
+    InstanceOf(PoolIndex), 
+    L2i,
+    L2d,
+    L2f,
+    LALoad,
+    LAStore, 
+    LAdd,
+    LAnd, 
+    LOr,
+    LXOr,
+    LSub,
+    LMul,
+    LDiv,
+    ISub,
+    IRem,
+    LNeg,
+    IShL,
+    IShR, 
+    IUShR, 
+    IOr,
+    IXOr,
+    LCmp, 
+    IReturn,
+    LReturn, 
+    LRem,
+    LShL, 
+    LShR, 
+    LUShR, 
+    LookupSwitch { 
         default: u32,
         pairs: Vec<(i32, u32)>,
     },
-    Nop, //
-    MonitorEnter,//
-    MonitorExit,//
-    MultiANewArray {//
+    Nop, 
+    MonitorEnter,
+    MonitorExit,
+    MultiANewArray {
         index: u16,
         dimensions: u8,
     },
-    New(PoolIndex), //
+    New(PoolIndex), 
+    AStore(Index),
+    LStore(Index),
+    IStore(Index),
+    DStore(Index),
+    FStore(Index),
+    FLoad(Index),
+    ILoad(Index),
+    ALoad(Index),
+    DLoad(Index),
+    LLoad(Index),
+    IInc { index: u16, value: i16, }, 
+    InvokeDynamic(PoolIndex),
     Ret(Index),
-    AStore(Index),//
-    LStore(Index),//
-    IStore(Index),//
-    DStore(Index),//
-    FStore(Index),//
-    FLoad(Index),//
-    ILoad(Index),//
-    ALoad(Index),//
-    DLoad(Index),//
-    LLoad(Index),//
-    IInc { index: u16, value: i16, }, //
     IfACmpEq(BranchIndex),
     IfACmpNe(BranchIndex),
     IfICmpEq(BranchIndex),

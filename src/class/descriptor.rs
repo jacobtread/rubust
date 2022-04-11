@@ -1,4 +1,5 @@
-use std::fmt::{Debug, Formatter};
+use std::fmt::{Debug, format, Formatter};
+
 use regex::Regex;
 
 use crate::class::class::ClassPath;
@@ -34,12 +35,13 @@ pub enum Descriptor {
 
 impl Debug for Descriptor {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.write_str(self.to_java().as_str())?;
+        f.write_str(self.to_internal_java().as_str())?;
         Ok(())
     }
 }
 
 impl Descriptor {
+
     pub fn parse_all(value: &str) -> Vec<Descriptor> {
         let regex = Regex::new(r"([BCDFIJSZV]|(L.*;)|(\[.*))")
             .expect("invalid regex");
@@ -47,38 +49,65 @@ impl Descriptor {
             .map(|v| Descriptor::parse(v.as_str())).collect()
     }
 
-    pub fn ito_java(&self) -> &str {
+    pub fn to_internal_java(&self) -> String {
         match self {
-            Descriptor::Byte => "B",
-            Descriptor::Char => "C",
-            Descriptor::Double => "D",
-            Descriptor::Float => "F",
-            Descriptor::Int => "I",
-            Descriptor::Long => "J",
-            Descriptor::Short => "S",
-            Descriptor::Boolean => "Z",
-            Descriptor::Void => "V",
-            _ => "",
+            Descriptor::Class(clazz) => format!("L{};", clazz.internal_path()),
+            Descriptor::Array(arr) => {
+                format!("{}{}", "[".repeat(arr.dimensions as usize), arr.descriptor.to_internal_java())
+            }
+            Descriptor::Method(met) => {
+                let mut out = String::from('(');
+                for x in &met.parameters {
+                    out.push_str(x.to_internal_java().as_str());
+                }
+                out.push_str(")");
+                out.push_str(met.return_type.to_internal_java().as_str());
+                out
+            }
+            Descriptor::Unknown(v) => format!("/* unknown type */ {}", v.clone()),
+            el => String::from(match self {
+                Descriptor::Byte => "B",
+                Descriptor::Char => "C",
+                Descriptor::Double => "D",
+                Descriptor::Float => "F",
+                Descriptor::Int => "I",
+                Descriptor::Long => "J",
+                Descriptor::Short => "S",
+                Descriptor::Boolean => "Z",
+                Descriptor::Void => "V",
+                _ => "",
+            })
         }
     }
 
     pub fn to_java(&self) -> String {
         match self {
-            Descriptor::Class(clazz) => format!("L{};", clazz.internal_path()),
+            Descriptor::Class(clazz) => clazz.name.clone(),
             Descriptor::Array(arr) => {
                 format!("{}{}", "[".repeat(arr.dimensions as usize), arr.descriptor.to_java())
             }
             Descriptor::Method(met) => {
                 let mut out = String::from('(');
                 for x in &met.parameters {
-                    out.push_str(x.to_java().as_str());
+                    out.push_str(x.to_internal_java().as_str());
                 }
                 out.push_str(")");
-                out.push_str(met.return_type.to_java().as_str());
+                out.push_str(met.return_type.to_internal_java().as_str());
                 out
             }
-            Descriptor::Unknown(v) => v.clone(),
-            el => String::from(el.ito_java())
+            Descriptor::Unknown(v) => format!("/* unknown type */ {}", v.clone()),
+            el => String::from(match self {
+                Descriptor::Byte => "byte",
+                Descriptor::Char => "char",
+                Descriptor::Double => "double",
+                Descriptor::Float => "float",
+                Descriptor::Int => "int",
+                Descriptor::Long => "long",
+                Descriptor::Short => "short",
+                Descriptor::Boolean => "boolean",
+                Descriptor::Void => "void",
+                _ => "",
+            })
         }
     }
 

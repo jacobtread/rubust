@@ -61,9 +61,9 @@ pub struct Attribute {
 
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
-struct BootstrapMethod {
-    method_ref: PoolIndex,
-    arguments: Vec<PoolIndex>,
+pub struct BootstrapMethod {
+    pub method_ref: PoolIndex,
+    pub arguments: Vec<PoolIndex>,
 }
 
 
@@ -161,8 +161,8 @@ impl AttributeValue {
             "EnclosingMethod" => AttributeValue::EnclosingMethod(EnclosingMethod::read(c)?),
             "LocalVariableTypeTable" => AttributeValue::LocalVariableTable(u16::read_vec(c)?),
             "BootstrapMethods" => AttributeValue::BootstrapMethods(u16::read_vec_closure(c, |r| -> ReadResult<BootstrapMethod> {
-                let method_ref = PoolIndex::read(c)?;
-                let arguments = u16::read_vec(c)?;
+                let method_ref = PoolIndex::read(r)?;
+                let arguments = u16::read_vec(r)?;
                 Ok(BootstrapMethod { method_ref, arguments })
             })?),
             _ => AttributeValue::Unknown(data.to_vec())
