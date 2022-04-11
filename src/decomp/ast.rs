@@ -1,12 +1,12 @@
 use std::collections::HashMap;
 use std::detect::__is_feature_detected::popcnt;
 use std::fmt::{Display, Formatter};
-use crate::class::class::ClassPath;
 
-use crate::class::constant::{ConstantPool, MemberReference};
+use crate::class::class::ClassPath;
+use crate::class::constant::{Constant, ConstantPool, MemberReference};
 use crate::class::descriptor::Descriptor;
 use crate::class::op::{Instr, InstrSet};
-use crate::error::{DecompileError, StackError};
+use crate::error::{ConstantError, DecompileError, StackError};
 
 #[derive(Debug, Clone)]
 pub enum VarType {
@@ -15,6 +15,9 @@ pub enum VarType {
     Float,
     Double,
     Long,
+    Short,
+    Boolean,
+    Char,
     Reference,
 }
 
@@ -28,6 +31,9 @@ impl Display for VarType {
                    VarType::Double => "double",
                    VarType::Long => "long",
                    VarType::Byte => "byte",
+                   VarType::Short => "short",
+                   VarType::Boolean => "boolean",
+                   VarType::Char => "char",
                }
         )
     }
@@ -58,32 +64,80 @@ impl Stack {
         }
     }
 
+    fn pop_boxed(&mut self) -> Result<Box<AST>, StackError> {
+        match self.values.pop() {
+            None => Err(StackError::Empty),
+            Some(value) => Ok(Box::new(value))
+        }
+    }
+
     fn pop_count(&mut self, amount: usize) -> Result<(), StackError> {
         for _ in 0..amount {
-            self.pop()?
+            self.pop()?;
         }
         Ok(())
     }
 
     fn push(&mut self, value: AST) {
-        self.values.push(value)
+        self.values.push(value);
+    }
+
+    fn empty(&self) -> Result<(), StackError> {
+        if !self.values.is_empty() {
+            Err(StackError::Remaining(self.values.len() as usize))
+        } else {
+            Ok(())
+        }
+    }
+
+    fn prim_cast(&mut self, primitive: VarType) -> Result<(), StackError> {
+        let value = self.pop_boxed()?;
+        self.push(AST::PrimitiveCast {
+            primitive,
+            value,
+        });
+        Ok(())
+    }
+
+    fn swap(&mut self) -> Result<(), StackError> {
+        let len = self.values.len();
+        if len >= 2 {
+            self.values.swap(len - 1, len - 2);
+            Ok(())
+        } else {
+            Err(StackError::NotEnough(2, len))
+        }
+    }
+
+    fn pop2(&mut self) -> Result<(), StackError> {
+        let top = self.pop()?;
+        match top {
+            AST::DoubleConstant(_) | AST::LongConstant(_) => Ok(()),
+            _ => {
+                self.pop()
+            }
+        }
     }
 }
 
 impl Block {
     fn decompile(&self, constant_pool: &ConstantPool) -> DecompileResult<ASTSet> {
-        let mut statements = Vec::new();
+        let mut statements = ASTSet::new();
         let mut stack = Stack::new();
 
         for (pos, code) in &self.instructions {
             match code {
-                Instr::ILoad(index) => stack.push(AST::Variable(*index, VarType::Int)),
-                Instr::LLoad(index) => stack.push(AST::Variable(*index, VarType::Long)),
-                Instr::FLoad(index) => stack.push(AST::Variable(*index, VarType::Float)),
-                Instr::DLoad(index) => stack.push(AST::Variable(*index, VarType::Double)),
-                Instr::ALoad(index) => stack.push(AST::Variable(*index, VarType::Reference)),
+                Instr::SALoad => {}
+                Instr::Swap => { stack.swap()?; }
+                Instr::ILoad(index) => { stack.push(AST::Variable(*index, VarType::Int)); }
+                Instr::LLoad(index) => { stack.push(AST::Variable(*index, VarType::Long)); }
+                Instr::FLoad(index) => { stack.push(AST::Variable(*index, VarType::Float)); }
+                Instr::DLoad(index) => { stack.push(AST::Variable(*index, VarType::Double)); }
+                Instr::ALoad(index) => { stack.push(AST::Variable(*index, VarType::Reference)); }
                 Instr::InvokeSpecial(index) |
-                Instr::InvokeVirtual(index) => {
+                Instr::InvokeInterface(index) |
+                Instr::InvokeVirtual(index) |
+                Instr::InvokeDynamic(index) => {
                     let member = constant_pool.get_member_ref(index)?;
                     let descriptor = &member.name_and_type.descriptor;
                     if let Descriptor::Method(method) = descriptor {
@@ -92,22 +146,145 @@ impl Block {
                             args.push(stack.pop()?);
                         }
                         args.reverse();
-                        let reference = Box::new(stack.pop()?);
-                        if let &Descriptor::Void = method.return_type {
-                            statements.push(AST::)
+                        let reference = stack.pop_boxed()?;
+                        if let Descriptor::Void = *method.return_type {
+                            statements.push(AST::MethodCall { member, reference, args });
+                        } else {
+                            stack.push(AST::MethodCall { member, reference, args });
                         }
                     } else {
                         Err(DecompileError::ExpectedMethodDescriptor)?;
                     }
                 }
+                Instr::Return => { statements.push(AST::VoidReturn); }
+                Instr::IStore(index) |
+                Instr::LStore(index) |
+                Instr::FStore(index) |
+                Instr::DStore(index) |
+                Instr::AStore(index) => { statements.push(AST::Set(*index, stack.pop_boxed()?)); }
+                Instr::IAStore |
+                Instr::LAStore |
+                Instr::DAStore |
+                Instr::CAStore |
+                Instr::BAStore |
+                Instr::AAStore |
+                Instr::SAStore |
+                Instr::FAStore => {
+                    let reference = stack.pop_boxed()?;
+                    let index = stack.pop_boxed()?;
+                    let value = stack.pop_boxed()?;
+                    statements.push(AST::ArrayStore { reference, index, value })
+                }
+                Instr::IALoad |
+                Instr::SALoad |
+                Instr::DALoad |
+                Instr::LALoad |
+                Instr::CALoad |
+                Instr::BALoad |
+                Instr::AALoad |
+                Instr::FALoad => {
+                    let reference = stack.pop_boxed()?;
+                    let index = stack.pop_boxed()?;
+                    stack.push(AST::ArrayLoad { reference, index })
+                }
+                Instr::GetStatic(index) => {
+                    let member = constant_pool.get_member_ref(index)?;
+                    stack.push(AST::Static(member));
+                }
+                Instr::ArrayLength => {
+                    let reference = stack.pop_boxed()?;
+                    stack.push(AST::ArrayLength { reference });
+                }
+                Instr::LoadConst(index) => {
+                    stack.push(match constant_pool.inner.get(index)
+                        .ok_or(ConstantError::NotFound(*index))? {
+                        Constant::Integer(value) => AST::IntegerConstant(*value),
+                        Constant::Float(value) => AST::FloatConstant(*value),
+                        Constant::Long(value) => AST::LongConstant(*value),
+                        Constant::Double(value) => AST::DoubleConstant(*value),
+                        Constant::String(index) => AST::StringConst(constant_pool.get_utf8(index)?.clone()),
+                        _ => unimplemented!(),
+                    });
+                }
+                Instr::IConst(value) => { stack.push(AST::IntegerConstant(*value))?; }
+                Instr::DConst(value) => { stack.push(AST::DoubleConstant(*value))?; }
+                Instr::FConst(value) => { stack.push(AST::FloatConstant(*value))?; }
+                Instr::LConst(value) => { stack.push(AST::LongConstant(*value))?; }
+                Instr::IMul | Instr::FMul | Instr::DMul | Instr::LMul => {
+                    let left = stack.pop_boxed()?;
+                    let right = stack.pop_boxed()?;
+                    stack.push(AST::Mul(left, right));
+                }
+                Instr::IDiv | Instr::FDiv | Instr::DDiv | Instr::LDiv => {
+                    let left = stack.pop_boxed()?;
+                    let right = stack.pop_boxed()?;
+                    stack.push(AST::Div(left, right));
+                }
+                Instr::IAdd | Instr::FAdd | Instr::DAdd | Instr::LAdd => {
+                    let left = stack.pop_boxed()?;
+                    let right = stack.pop_boxed()?;
+                    stack.push(AST::Add(left, right));
+                }
+                Instr::ISub | Instr::FSub | Instr::DSub | Instr::LSub => {
+                    let left = stack.pop_boxed()?;
+                    let right = stack.pop_boxed()?;
+                    stack.push(AST::Sub(left, right));
+                }
+                Instr::F2l | Instr::D2l | Instr::I2l => { stack.prim_cast(VarType::Long)?; }
+                Instr::F2d | Instr::I2d | Instr::L2d => { stack.prim_cast(VarType::Double)?; }
+                Instr::F2i | Instr::D2i | Instr::L2i => { stack.prim_cast(VarType::Int)?; }
+                Instr::I2f | Instr::D2f | Instr::L2f => { stack.prim_cast(VarType::Float)?; }
+                Instr::I2b => { stack.prim_cast(VarType::Float)?; }
+                Instr::I2s => { stack.prim_cast(VarType::Short)?; }
+                Instr::I2c => { stack.prim_cast(VarType::Char)?; }
+                Instr::AConstNull => { stack.push(AST::Null); }
+                Instr::BIPush(value) => { stack.push(AST::Int(*value as i32)); }
+                Instr::SIPush(value) => { stack.push(AST::Short(*value)); }
+                Instr::Pop => { stack.pop()?; }
+                Instr::Pop2 => { stack.pop2()?; }
+                Instr::AReturn |
+                Instr::IReturn |
+                Instr::FReturn |
+                Instr::DReturn |
+                Instr::LReturn => {
+                    let value = stack.pop_boxed()?;
+                    statements.push(AST::Return(value))
+                }
+                Instr::MonitorEnter | Instr::MonitorExit => { stack.pop(); }
+                Instr::Nop => {}
+                Instr::New(index) => {
+                    let class = constant_pool.get_class_path_required(index)?;
+                    stack.push(AST::New(class))
+                },
+                Instr::FCmpL | Instr::DCmpL => {
+                    let left = stack.pop_boxed()?;
+                    let right = stack.pop_boxed()?;
+                    stack.push(AST::Comparison(ComparisonMode::Less, left, right));
+                }
+                Instr::FCmpG | Instr::DCmpG => {
+                    let left = stack.pop_boxed()?;
+                    let right = stack.pop_boxed()?;
+                    stack.push(AST::Comparison(ComparisonMode::Greater, left, right));
+                }
+                Instr::LCmp => {
+                    let left = stack.pop_boxed()?;
+                    let right = stack.pop_boxed()?;
+                    stack.push(AST::SignedComparison(left, right))
+                }
                 _ => {}
-            }
+            };
         }
 
-        if stack.len() != 0 {}
+        stack.empty()?;
 
         Ok(statements)
     }
+}
+
+#[derive(Debug, Clone)]
+enum ComparisonMode {
+    Greater,
+    Less,
 }
 
 #[derive(Debug, Clone)]
@@ -115,20 +292,53 @@ pub enum AST {
     Variable(u16, VarType),
     Set(u16, Box<AST>),
     Mul(Box<AST>, Box<AST>),
+    Div(Box<AST>, Box<AST>),
+    Sub(Box<AST>, Box<AST>),
+    Add(Box<AST>, Box<AST>),
+    New(ClassPath),
     Static(MemberReference),
+    MethodCall {
+        member: MemberReference,
+        reference: Box<AST>,
+        args: Vec<AST>,
+    },
+    Comparison(ComparisonMode, Box<AST>, Box<AST>),
+    SignedComparison(Box<AST>, Box<AST>),
     PrimitiveCast {
         value: Box<AST>,
-        primitive: VarType
+        primitive: VarType,
     },
     ClassCast {
         value: Box<AST>,
         class: ClassPath,
     },
+    ArrayReference {
+        array_type: ClassPath,
+        dimensions: u8,
+    },
+    ArrayLoad {
+        reference: Box<AST>,
+        index: Box<AST>,
+    },
+    ArrayLength {
+        reference: Box<AST>
+    },
+    ArrayStore {
+        reference: Box<AST>,
+        index: Box<AST>,
+        value: Box<AST>,
+    },
     StringConst(String),
-    FloatConst(f64),
-    IntConst(i64),
-
-    VoidReturn
+    IntegerConstant(i32),
+    FloatConstant(f32),
+    LongConstant(i64),
+    DoubleConstant(f64),
+    Short(i16),
+    Int(i32),
+    Null,
+    VoidReturn,
+    Return(Box<AST>),
+    Instance,
 }
 
 

@@ -42,7 +42,9 @@ pub enum StackError {
     #[error("nothing left on the stack")]
     Empty,
     #[error("stack still had {0} items remaining")]
-    Remaining(usize)
+    Remaining(usize),
+    #[error("not enough items. needed {0} but only had {1}")]
+    NotEnough(usize, usize),
 }
 
 #[derive(Error, Debug)]

@@ -192,26 +192,6 @@ pub fn find_paths(blocks: &HashMap<u64, Block>, node: u64, path_in: Vec<u64>) ->
     paths
 }
 
-#[derive(Debug, Clone)]
-pub enum AST {
-    Call {
-        method_data: MemberReference,
-        reference: Box<AST>,
-        args: Vec<AST>,
-    },
-    ArrayLength {
-        reference: Box<AST>,
-    },
-    ArrayReference {
-        array_type: ClassPath,
-        dimensions: u8,
-    },
-    ConstInt(i64),
-    ConstFloat(f64),
-    ConstString(String),
-    VoidReturn,
-}
-
 pub fn decompile_block(
     block: &Block,
     constant_pool: &ConstantPool,
@@ -220,33 +200,6 @@ pub fn decompile_block(
     let mut stack: Vec<AST> = Vec::new();
     for (pos, code) in &block.instructions {
         match code {
-            Instr::InvokeSpecial(index) | Instr::InvokeVirtual(index) => {
-                let member = constant_pool.get_member_ref(*index)?;
-                let descriptor = &member.name_and_type.descriptor;
-                if let Descriptor::Method(method) = descriptor {
-                    let mut args = Vec::new();
-                    for _ in 0..method.parameters.len() {
-                        args.push(stack.pop().ok_or(DecompileError::EmptyStack)?);
-                    }
-                    args.reverse();
-                    let reference = Box::new(stack.pop().ok_or(DecompileError::EmptyStack)?);
-                    if let Descriptor::Void = *method.return_type {
-                        statements.push(AST::Call {
-                            method_data: member,
-                            reference,
-                            args,
-                        });
-                    } else {
-                        stack.push(AST::Call {
-                            method_data: member,
-                            reference,
-                            args,
-                        });
-                    }
-                } else {
-                    Err(DecompileError::ExpectedMethodDescriptor)?;
-                }
-            }
             Instr::Return => {
                 statements.push(AST::VoidReturn);
             }
@@ -279,17 +232,6 @@ pub fn decompile_block(
                     _ => unimplemented!(),
                 };
                 stack.push(value);
-            }
-            Instr::IConst(value) => stack.push(AST::ConstInt(*value as i64)),
-            Instr::IMul => {
-                let rhs = Box::new(stack.pop().ok_or(DecompileError::EmptyStack)?);
-                let lhs = Box::new(stack.pop().ok_or(DecompileError::EmptyStack)?);
-                stack.push(AST::Mul { lhs, rhs });
-            }
-            Instr::I2b => {
-                let cast_type = VarType::Byte;
-                let value = Box::new(stack.pop().ok_or(DecompileError::EmptyStack)?);
-                stack.push(AST::BasicCast { cast_type, value })
             }
             Instr::CheckCast(index) => {
                 let cast_type = constant_pool.get_class_path_required(*index)?;
