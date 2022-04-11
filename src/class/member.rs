@@ -17,7 +17,7 @@ pub struct Member {
 
 
 impl Member {
-    fn is_init(&self) -> bool { self.name == "<init>" }
+    pub fn is_init(&self) -> bool { self.name == "<init>" }
 
     pub fn read<R: Read>(
         i: &mut R,

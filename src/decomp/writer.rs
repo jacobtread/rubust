@@ -1,6 +1,7 @@
-use std::io::Write;
+use std::io::{Cursor, Write};
 
 use crate::class::access::{AccessFlag, AccessFlags};
+use crate::class::attribute::{AttributeValue, CodeAttr};
 use crate::class::class::Class;
 use crate::class::descriptor::Descriptor;
 use crate::class::member::Member;
@@ -67,6 +68,12 @@ impl JavaWriter {
             write!(o, "\n")?;
         }
 
+        if !class.methods.is_empty() {
+            for method in class.methods.iter() {
+                self.write_method(class, method, o)?;
+            }
+        }
+
         write!(o, "}}")?;
         Ok(())
     }
@@ -99,7 +106,7 @@ impl JavaWriter {
         Ok(())
     }
 
-    fn write_access_psf<W: Write>(&self, access: &AccessFlags, o: &mut W)  -> WriteResult {
+    fn write_access_psf<W: Write>(&self, access: &AccessFlags, o: &mut W) -> WriteResult {
         if access.is_set(AccessFlag::Public) {
             write!(o, "public ")?;
         } else if access.is_set(AccessFlag::Protected) {
@@ -128,6 +135,56 @@ impl JavaWriter {
         }
         self.write_descriptor(&field.descriptor, o)?;
         write!(o, " {};\n", field.name)?;
+        Ok(())
+    }
+
+    fn write_code<W: Write>(&self, class: &Class, code_attr: &CodeAttr, o: &mut W) -> WriteResult {
+        Ok(())
+    }
+
+    fn write_method<W: Write>(&self, class: &Class, method: &Member, o: &mut W) -> WriteResult {
+        write!(o, "    ")?;
+        self.write_access_psf(&method.access_flags, o)?;
+        let desc = match &method.descriptor {
+            Descriptor::Method(method) => method,
+            _ => Err(WriteError::BadDescriptor)?
+        };
+        let c = method.is_init();
+        if c {
+            write!(o, "{}(", class.class_path.name)?;
+        } else {
+            self.write_descriptor(&*desc.return_type, o)?;
+            write!(o, " {}(", method.name)?;
+        }
+        let mut p_num = 0;
+        if !desc.parameters.is_empty() {
+            let last = desc.parameters.len() - 1;
+            for (i, parameter) in desc.parameters.iter().enumerate() {
+                self.write_descriptor(parameter, o)?;
+                write!(o, " p_{}", p_num)?;
+                p_num += 1;
+                if i != last {
+                    write!(o, ", ")?;
+                }
+            }
+        }
+
+        write!(o, ") {{\n")?;
+
+        let code_attr = &method.attributes
+            .iter()
+            .find(|a| a.name == "Code")
+            .unwrap()
+            .value;
+
+        match code_attr {
+            AttributeValue::Code(code_attr_value) => {
+                self.write_code(class, code_attr_value, o)?;
+            }
+            _ => Err(WriteError::BadCodeAttribute)?
+        }
+
+        write!(o, "    }}\n")?;
         Ok(())
     }
 }

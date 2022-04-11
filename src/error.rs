@@ -11,6 +11,10 @@ pub enum WriteError {
     IO(#[from] io::Error),
     #[error(transparent)]
     Fmt(#[from] std::fmt::Error),
+    #[error("method descriptor expected")]
+    BadDescriptor,
+    #[error("code attribute wasn't code attribute")]
+    BadCodeAttribute
 }
 
 #[derive(Error, Debug)]

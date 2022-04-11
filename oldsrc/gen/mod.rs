@@ -83,38 +83,6 @@ impl ClassWriter {
         Ok(())
     }
 
-    pub fn write_field<B: Write>(&self, field: &Member, o: &mut B) -> Result<()> {
-        write!(o, "    ")?;
-
-        self.write_access_flags(&field.access_flags, o)?;
-        self.write_descriptor(&field.descriptor, o)?;
-
-        write!(o, " {};\n", field.name)?;
-
-        Ok(())
-    }
-
-    pub fn write_descriptor<B: Write>(&self, descriptor: &Descriptor, o: &mut B) -> Result<()> {
-        match descriptor {
-            Descriptor::Int => write!(o, "int")?,
-            Descriptor::Long => write!(o, "long")?,
-            Descriptor::Float => write!(o, "float")?,
-            Descriptor::Double => write!(o, "double")?,
-            Descriptor::Char => write!(o, "char")?,
-            Descriptor::Byte => write!(o, "byte")?,
-            Descriptor::Boolean => write!(o, "boolean")?,
-            Descriptor::Short => write!(o, "short")?,
-            Descriptor::Void => write!(o, "void")?,
-            Descriptor::Array(array) => {
-                self.write_descriptor(&*array.descriptor, o)?;
-                write!(o, "{}", "[]".repeat(array.dimensions as usize))?;
-            }
-            Descriptor::ClassReference(class) => write!(o, "{}", class.name)?,
-            _ => write!(o, "/* Failed to parse type*/")?,
-        }
-
-        Ok(())
-    }
 
     pub fn write_code<B: Write>(&self, class: &Class, code_attr: &CodeAttr, o: &mut B) -> Result<()> {
         let code = &code_attr.code;
