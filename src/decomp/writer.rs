@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::io::Write;
 
 use crate::class::access::{AccessFlag, AccessFlags};
@@ -6,7 +7,7 @@ use crate::class::class::Class;
 use crate::class::descriptor::Descriptor;
 use crate::class::member::Member;
 use crate::class::op::parse_code;
-use crate::decomp::ast::{AST, gen_control_flow_graph};
+use crate::decomp::ast::{AST, Block, find_paths, gen_control_flow_graph};
 use crate::error::WriteError;
 
 pub struct JavaWriter;
@@ -140,29 +141,35 @@ impl JavaWriter {
         Ok(())
     }
 
+
     fn write_code<W: Write>(&self, class: &Class, method: &Member, code_attr: &CodeAttr, o: &mut W) -> WriteResult {
         write!(o, ") {{")?;
         let instr = parse_code(code_attr.code.clone())
             .map_err(|_| WriteError::BadCodeAttribute)?;
         let control_flow_graph = gen_control_flow_graph(&instr);
-        // let paths = find_paths(&control_flow_graph, 0, Vec::new());
+        let paths = find_paths(&control_flow_graph, 0, Vec::new());
         let mut has_values = false;
-        for block in control_flow_graph.values() {
-            let decompiled = block.decompile(&class.constant_pool)?;
-            let length = decompiled.len();
-            for (index, statement) in decompiled.iter().enumerate() {
-                if index == length - 1 {
-                    match statement {
-                        AST::VoidReturn => break,
-                        _ => {}
-                    }
-                } else {
-
-                    write!(o, "\n      ")?;
-                    statement.write_java(o, method, code_attr)?;
-                    if !has_values { has_values = true; }
-                }
-            }
+        let mut keys: Vec<&u64> = control_flow_graph.keys().collect();
+        keys.sort(); // Obtain a sorted version of the keys
+        for key in keys {
+            let block: &Block = control_flow_graph.get(key)
+                .expect("expected constant pool to contain index");
+            println!("\n{}: {:?}", key, block);
+            // let decompiled = block.decompile(&class.constant_pool)?;
+            // let length = decompiled.len();
+            // for (index, statement) in decompiled.iter().enumerate() {
+            //     if index == length - 1 {
+            //         match statement {
+            //             AST::VoidReturn => break,
+            //             _ => {}
+            //         }
+            //     } else {
+            //
+            //         write!(o, "\n      ")?;
+            //         statement.write_java(o, method, code_attr)?;
+            //         if !has_values { has_values = true; }
+            //     }
+            // }
         }
         if has_values {
             write!(o, "\n    }}\n\n")?;

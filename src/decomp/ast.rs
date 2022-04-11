@@ -43,12 +43,6 @@ impl Display for VarType {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct Block {
-    instructions: InstrSet,
-    branches: Vec<u64>,
-}
-
 type DecompileResult<T> = Result<T, DecompileError>;
 type ASTSet = Vec<AST>;
 
@@ -116,6 +110,12 @@ impl Stack {
             }
         }
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct Block {
+    instructions: InstrSet,
+    branches: Vec<u64>,
 }
 
 impl Block {
