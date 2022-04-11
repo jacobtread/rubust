@@ -65,16 +65,6 @@ pub const ACC_MODULE: u16 = 0x8000;
 pub const ACC_SUPER: u16 = 0x0020;
 pub const ACC_INTERFACE: u16 = 0x0200;
 
-#[derive(Debug, Clone)]
-pub struct AccessFlags(pub u16);
-
-impl AccessFlags {
-    pub fn contains(&self, flag: u16) -> bool {
-        self.0.clone() & flag == flag
-    }
-}
-
-
 pub const GROUP_GENERAL: u8 = 1;
 pub const GROUP_JUMP: u8 = 2;
 pub const GROUP_SWITCH: u8 = 3;
@@ -100,7 +90,6 @@ pub const CONSTANT_DYNAMIC: u8 = 17;
 pub const CONSTANT_INVOKE_DYNAMIC: u8 = 18;
 pub const CONSTANT_MODULE: u8 = 19;
 pub const CONSTANT_PACKAGE: u8 = 20;
-
 
 pub const CONSTANT_METHOD_HANDLE_REF_GET_FIELD: u8 = 1;
 pub const CONSTANT_METHOD_HANDLE_REF_GET_STATIC: u8 = 2;

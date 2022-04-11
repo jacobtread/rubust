@@ -72,12 +72,12 @@ impl AccessFlags {
 
     pub fn set(&mut self, value: AccessFlag) {
         let sv = value.value();
-        self.0 = self.0 & sv
+        self.0 = self.0 | sv
     }
 
     pub fn is_set(&self, value: AccessFlag) -> bool {
         let sv = value.value();
-        self.0 | sv == sv
+        self.0 & sv == sv
     }
 }
 
