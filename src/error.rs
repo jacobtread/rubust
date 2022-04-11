@@ -18,6 +18,18 @@ pub enum WriteError {
 }
 
 #[derive(Error, Debug)]
+pub enum DecompileError {
+    #[error(transparent)]
+    IO(#[from] io::Error),
+    #[error(transparent)]
+    ReadErr(#[from] ReadError),
+    #[error("unknown array type {0}")]
+    UnknownArrayType(u8),
+    #[error("unknown op code {0}")]
+    UnknownInstruction(u8)
+}
+
+#[derive(Error, Debug)]
 pub enum ReadError {
     #[error(transparent)]
     IO(#[from] io::Error),

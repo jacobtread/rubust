@@ -5,6 +5,7 @@ use crate::class::attribute::{AttributeValue, CodeAttr};
 use crate::class::class::Class;
 use crate::class::descriptor::Descriptor;
 use crate::class::member::Member;
+use crate::class::op::parse_code;
 use crate::error::WriteError;
 
 pub struct JavaWriter;
@@ -139,6 +140,11 @@ impl JavaWriter {
     }
 
     fn write_code<W: Write>(&self, class: &Class, code_attr: &CodeAttr, o: &mut W) -> WriteResult {
+        let instr = parse_code(code_attr.code.clone())
+            .map_err(|_| WriteError::BadCodeAttribute)?;
+        for (pos, instr) in instr {
+            write!(o, "      {}: {:?}\n", pos, instr)?;
+        }
         Ok(())
     }
 
