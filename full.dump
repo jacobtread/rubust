@@ -1,0 +1,409 @@
+Class {
+    version: Java 17, 0,
+    constant_pool: ConstantPool {
+      1: MethodRef(MemberReference { class_index: 2, name_and_type_info: 3 })
+      2: Class(4)
+      3: NameAndType(NameAndType { name_index: 5, descriptor_index: 6 })
+      4: Utf8("java/lang/Object")
+      5: Utf8("<init>")
+      6: Utf8("()V")
+      7: String(8)
+      8: Utf8("")
+      9: FieldRef(MemberReference { class_index: 10, name_and_type_info: 11 })
+      10: Class(12)
+      11: NameAndType(NameAndType { name_index: 13, descriptor_index: 14 })
+      12: Utf8("test/Test")
+      13: Utf8("hi")
+      14: Utf8("Ljava/lang/String;")
+      15: FieldRef(MemberReference { class_index: 10, name_and_type_info: 16 })
+      16: NameAndType(NameAndType { name_index: 17, descriptor_index: 18 })
+      17: Utf8("h")
+      18: Utf8("I")
+      19: Class(20)
+      20: Utf8("[[[I")
+      21: FieldRef(MemberReference { class_index: 10, name_and_type_info: 22 })
+      22: NameAndType(NameAndType { name_index: 23, descriptor_index: 20 })
+      23: Utf8("x")
+      24: MethodRef(MemberReference { class_index: 10, name_and_type_info: 3 })
+      25: FieldRef(MemberReference { class_index: 26, name_and_type_info: 27 })
+      26: Class(28)
+      27: NameAndType(NameAndType { name_index: 29, descriptor_index: 30 })
+      28: Utf8("java/lang/System")
+      29: Utf8("out")
+      30: Utf8("Ljava/io/PrintStream;")
+      31: String(32)
+      32: Utf8("Hello")
+      33: MethodRef(MemberReference { class_index: 34, name_and_type_info: 35 })
+      34: Class(36)
+      35: NameAndType(NameAndType { name_index: 37, descriptor_index: 38 })
+      36: Utf8("java/io/PrintStream")
+      37: Utf8("println")
+      38: Utf8("(Ljava/lang/String;)V")
+      39: MethodRef(MemberReference { class_index: 40, name_and_type_info: 41 })
+      40: Class(42)
+      41: NameAndType(NameAndType { name_index: 43, descriptor_index: 44 })
+      42: Utf8("java/security/Security")
+      43: Utf8("getProviders")
+      44: Utf8("()[Ljava/security/Provider;")
+      45: MethodRef(MemberReference { class_index: 46, name_and_type_info: 47 })
+      46: Class(48)
+      47: NameAndType(NameAndType { name_index: 49, descriptor_index: 50 })
+      48: Utf8("java/security/Provider")
+      49: Utf8("getName")
+      50: Utf8("()Ljava/lang/String;")
+      51: MethodRef(MemberReference { class_index: 46, name_and_type_info: 52 })
+      52: NameAndType(NameAndType { name_index: 53, descriptor_index: 54 })
+      53: Utf8("stringPropertyNames")
+      54: Utf8("()Ljava/util/Set;")
+      55: InterfaceMethodRef(MemberReference { class_index: 56, name_and_type_info: 57 })
+      56: Class(58)
+      57: NameAndType(NameAndType { name_index: 59, descriptor_index: 60 })
+      58: Utf8("java/util/Set")
+      59: Utf8("iterator")
+      60: Utf8("()Ljava/util/Iterator;")
+      61: InterfaceMethodRef(MemberReference { class_index: 62, name_and_type_info: 63 })
+      62: Class(64)
+      63: NameAndType(NameAndType { name_index: 65, descriptor_index: 66 })
+      64: Utf8("java/util/Iterator")
+      65: Utf8("hasNext")
+      66: Utf8("()Z")
+      67: InterfaceMethodRef(MemberReference { class_index: 62, name_and_type_info: 68 })
+      68: NameAndType(NameAndType { name_index: 69, descriptor_index: 70 })
+      69: Utf8("next")
+      70: Utf8("()Ljava/lang/Object;")
+      71: Class(72)
+      72: Utf8("java/lang/String")
+      73: MethodRef(MemberReference { class_index: 46, name_and_type_info: 74 })
+      74: NameAndType(NameAndType { name_index: 75, descriptor_index: 76 })
+      75: Utf8("getProperty")
+      76: Utf8("(Ljava/lang/String;)Ljava/lang/String;")
+      77: Utf8("ConstantValue")
+      78: Utf8("Code")
+      79: Utf8("LineNumberTable")
+      80: Utf8("(Ljava/lang/String;I)V")
+      81: Utf8("main")
+      82: Utf8("([Ljava/lang/String;)V")
+      83: Utf8("test")
+      84: Utf8("([Ljava/lang/String;)Ljava/security/Provider;")
+      85: Utf8("StackMapTable")
+      86: Class(87)
+      87: Utf8("[Ljava/security/Provider;")
+      88: Utf8("SourceFile")
+      89: Utf8("test.java")
+    },
+    access_flags: 0x0021,
+    class_path: test.Test,
+    super_class_path: Some(
+        java.lang.Object,
+    ),
+    interfaces: [],
+    fields: [
+        Member {
+            access_flags: 0x0011,
+            name: "hi",
+            descriptor: Ljava.lang/String;,
+            attributes: [
+                Attribute {
+                    name: "ConstantValue",
+                    value: ConstantValue(
+                        7,
+                    ),
+                },
+            ],
+        },
+        Member {
+            access_flags: 0x0002,
+            name: "h",
+            descriptor: I,
+            attributes: [],
+        },
+        Member {
+            access_flags: 0x0012,
+            name: "x",
+            descriptor: [[[I,
+            attributes: [],
+        },
+    ],
+    methods: [
+        Member {
+            access_flags: 0x0001,
+            name: "<init>",
+            descriptor: ()V,
+            attributes: [
+                Attribute {
+                    name: "Code",
+                    value: Code(
+                        CodeAttr {
+                            max_stack: 4,
+                            max_locals: 1,
+                            code: [
+                                42,
+                                183,
+                                0,
+                                1,
+                                42,
+                                18,
+                                7,
+                                181,
+                                0,
+                                9,
+                                42,
+                                4,
+                                181,
+                                0,
+                                15,
+                                42,
+                                3,
+                                3,
+                                3,
+                                197,
+                                0,
+                                19,
+                                3,
+                                181,
+                                0,
+                                21,
+                                177,
+                            ],
+                            exception_table: [],
+                            attributes: [
+                                Attribute {
+                                    name: "LineNumberTable",
+                                    value: LineNumberTable(
+                                        [
+                                            LineNumber {
+                                                start_pc: 0,
+                                                line_number: 13,
+                                            },
+                                            LineNumber {
+                                                start_pc: 4,
+                                                line_number: 9,
+                                            },
+                                            LineNumber {
+                                                start_pc: 10,
+                                                line_number: 10,
+                                            },
+                                            LineNumber {
+                                                start_pc: 15,
+                                                line_number: 11,
+                                            },
+                                            LineNumber {
+                                                start_pc: 26,
+                                                line_number: 13,
+                                            },
+                                        ],
+                                    ),
+                                },
+                            ],
+                        },
+                    ),
+                },
+            ],
+        },
+        Member {
+            access_flags: 0x0001,
+            name: "<init>",
+            descriptor: (Ljava.lang/String;I)V,
+            attributes: [
+                Attribute {
+                    name: "Code",
+                    value: Code(
+                        CodeAttr {
+                            max_stack: 1,
+                            max_locals: 3,
+                            code: [
+                                42,
+                                183,
+                                0,
+                                24,
+                                177,
+                            ],
+                            exception_table: [],
+                            attributes: [
+                                Attribute {
+                                    name: "LineNumberTable",
+                                    value: LineNumberTable(
+                                        [
+                                            LineNumber {
+                                                start_pc: 0,
+                                                line_number: 16,
+                                            },
+                                            LineNumber {
+                                                start_pc: 4,
+                                                line_number: 17,
+                                            },
+                                        ],
+                                    ),
+                                },
+                            ],
+                        },
+                    ),
+                },
+            ],
+        },
+        Member {
+            access_flags: 0x0009,
+            name: "main",
+            descriptor: ([Ljava.lang/String;)V,
+            attributes: [
+                Attribute {
+                    name: "Code",
+                    value: Code(
+                        CodeAttr {
+                            max_stack: 2,
+                            max_locals: 1,
+                            code: [
+                                178,
+                                0,
+                                25,
+                                18,
+                                31,
+                                182,
+                                0,
+                                33,
+                                177,
+                            ],
+                            exception_table: [],
+                            attributes: [
+                                Attribute {
+                                    name: "LineNumberTable",
+                                    value: LineNumberTable(
+                                        [
+                                            LineNumber {
+                                                start_pc: 0,
+                                                line_number: 20,
+                                            },
+                                            LineNumber {
+                                                start_pc: 8,
+                                                line_number: 21,
+                                            },
+                                        ],
+                                    ),
+                                },
+                            ],
+                        },
+                    ),
+                },
+            ],
+        },
+        Member {
+            access_flags: 0x0009,
+            name: "test",
+            descriptor: ([Ljava.lang/String;)Ljava.security/Provider;,
+            attributes: [
+                Attribute {
+                    name: "Code",
+                    value: Code(
+                        CodeAttr {
+                            max_stack: 3,
+                            max_locals: 7,
+                            code: [
+                                184,
+                                0,
+                                39,
+                            ],
+                            exception_table: [],
+                            attributes: [
+                                Attribute {
+                                    name: "LineNumberTable",
+                                    value: LineNumberTable(
+                                        [
+                                            LineNumber {
+                                                start_pc: 0,
+                                                line_number: 24,
+                                            },
+                                            LineNumber {
+                                                start_pc: 4,
+                                                line_number: 25,
+                                            },
+                                            LineNumber {
+                                                start_pc: 7,
+                                                line_number: 27,
+                                            },
+                                            LineNumber {
+                                                start_pc: 14,
+                                                line_number: 28,
+                                            },
+                                            LineNumber {
+                                                start_pc: 19,
+                                                line_number: 29,
+                                            },
+                                            LineNumber {
+                                                start_pc: 30,
+                                                line_number: 30,
+                                            },
+                                            LineNumber {
+                                                start_pc: 42,
+                                                line_number: 32,
+                                            },
+                                            LineNumber {
+                                                start_pc: 52,
+                                                line_number: 33,
+                                            },
+                                            LineNumber {
+                                                start_pc: 64,
+                                                line_number: 34,
+                                            },
+                                            LineNumber {
+                                                start_pc: 77,
+                                                line_number: 35,
+                                            },
+                                            LineNumber {
+                                                start_pc: 80,
+                                                line_number: 27,
+                                            },
+                                            LineNumber {
+                                                start_pc: 86,
+                                                line_number: 38,
+                                            },
+                                        ],
+                                    ),
+                                },
+                                Attribute {
+                                    name: "StackMapTable",
+                                    value: Unknown(
+                                        [
+                                            0,
+                                            4,
+                                            254,
+                                            0,
+                                            9,
+                                            7,
+                                            0,
+                                            86,
+                                            1,
+                                            1,
+                                            253,
+                                            0,
+                                            32,
+                                            7,
+                                            0,
+                                            46,
+                                            7,
+                                            0,
+                                            62,
+                                            249,
+                                            0,
+                                            37,
+                                            250,
+                                            0,
+                                            5,
+                                        ],
+                                    ),
+                                },
+                            ],
+                        },
+                    ),
+                },
+            ],
+        },
+    ],
+    attributes: [
+        Attribute {
+            name: "SourceFile",
+            value: SourceFile(
+                89,
+            ),
+        },
+    ],
+}

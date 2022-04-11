@@ -1,3 +1,4 @@
+use std::fmt::{Debug, Formatter};
 use std::io::Read;
 
 use crate::class::access::AccessFlags;
@@ -6,13 +7,14 @@ use crate::class::constant::ConstantPool;
 use crate::class::descriptor::Descriptor;
 use crate::io::{Readable, ReadResult, VecReadableFn};
 
-#[derive(Debug, Clone)]
+#[derive(Debug,Clone)]
 pub struct Member {
     pub access_flags: AccessFlags,
     pub name: String,
     pub descriptor: Descriptor,
     pub attributes: Vec<Attribute>,
 }
+
 
 impl Member {
     fn is_init(&self) -> bool { self.name == "<init>" }
