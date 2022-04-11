@@ -194,19 +194,6 @@ pub fn find_paths(blocks: &HashMap<u64, Block>, node: u64, path_in: Vec<u64>) ->
 
 #[derive(Debug, Clone)]
 pub enum AST {
-    BasicCast {
-        value: Box<AST>,
-        cast_type: VarType,
-    },
-    ClassCast {
-        value: Box<AST>,
-        cast_type: ClassPath,
-    },
-    Static(MemberReference),
-    Variable {
-        index: u16,
-        var_type: VarType,
-    },
     Call {
         method_data: MemberReference,
         reference: Box<AST>,
@@ -223,14 +210,6 @@ pub enum AST {
     ConstFloat(f64),
     ConstString(String),
     VoidReturn,
-    Set {
-        index: u16,
-        value: Box<AST>,
-    },
-    Mul {
-        lhs: Box<AST>,
-        rhs: Box<AST>,
-    },
 }
 
 pub fn decompile_block(
@@ -241,36 +220,6 @@ pub fn decompile_block(
     let mut stack: Vec<AST> = Vec::new();
     for (pos, code) in &block.instructions {
         match code {
-            Instr::ILoad(index) => {
-                stack.push(AST::Variable {
-                    index: *index,
-                    var_type: VarType::Int,
-                });
-            }
-            Instr::LLoad(index) => {
-                stack.push(AST::Variable {
-                    index: *index,
-                    var_type: VarType::Long,
-                });
-            }
-            Instr::FLoad(index) => {
-                stack.push(AST::Variable {
-                    index: *index,
-                    var_type: VarType::Float,
-                });
-            }
-            Instr::DLoad(index) => {
-                stack.push(AST::Variable {
-                    index: *index,
-                    var_type: VarType::Double,
-                });
-            }
-            Instr::ALoad(index) => {
-                stack.push(AST::Variable {
-                    index: *index,
-                    var_type: VarType::Reference,
-                });
-            }
             Instr::InvokeSpecial(index) | Instr::InvokeVirtual(index) => {
                 let member = constant_pool.get_member_ref(*index)?;
                 let descriptor = &member.name_and_type.descriptor;

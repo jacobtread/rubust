@@ -98,14 +98,13 @@ impl Readable for Class {
 
         let access_flags = AccessFlags::read(i)?;
 
-        let class_path = constant_pool.get_class_path(u16::read(i)?)?
+        let class_path = constant_pool.get_class_path(&u16::read(i)?)?
             .ok_or(ReadError::NoClassName)?;
-        let super_class_path = constant_pool.get_class_path(u16::read(i)?)?;
+        let super_class_path = constant_pool.get_class_path(&u16::read(i)?)?;
 
         let interfaces = u16::read_vec_closure(i, |r| -> ReadResult<ClassPath> {
             let name_index = PoolIndex::read(r)?;
-            constant_pool.get_class_path(name_index)?
-                .ok_or(ConstantError::InvalidClassReference(name_index))
+            constant_pool.get_class_path_required(&name_index)
                 .map_err(ReadError::from)
         })?;
 

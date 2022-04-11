@@ -6,7 +6,6 @@ use crate::class::class::Class;
 use crate::class::descriptor::Descriptor;
 use crate::class::member::Member;
 use crate::class::op::parse_code;
-use crate::decomp::ops::{AST, decompile_block, find_paths, gen_control_flow_graph};
 use crate::error::WriteError;
 
 pub struct JavaWriter;
@@ -141,95 +140,95 @@ impl JavaWriter {
     }
 
     fn write_code<W: Write>(&self, class: &Class, method: &Member, code_attr: &CodeAttr, o: &mut W) -> WriteResult {
-        let instr = parse_code(code_attr.code.clone())
-            .map_err(|_| WriteError::BadCodeAttribute)?;
-        let control_flow_graph = gen_control_flow_graph(&instr);
-        // let paths = find_paths(&control_flow_graph, 0, Vec::new());
-        let is_static = method.access_flags.is_set(AccessFlag::Static);
-        for block in control_flow_graph.values() {
-            let decompiled = decompile_block(block, &class.constant_pool)?;
-            let length = decompiled.len();
-            for (index, statement) in decompiled.iter().enumerate() {
-                if index == length - 1 {
-                    if let AST::VoidReturn = statement {
-                        break;
-                    }
-                } else {
-                    write!(o, "      ")?;
-                    self.write_ast(statement, class, is_static, method.is_init(), o)?;
-                    writeln!(o)?;
-                }
-            }
-        }
+        // let instr = parse_code(code_attr.code.clone())
+        //     .map_err(|_| WriteError::BadCodeAttribute)?;
+        // let control_flow_graph = gen_control_flow_graph(&instr);
+        // // let paths = find_paths(&control_flow_graph, 0, Vec::new());
+        // let is_static = method.access_flags.is_set(AccessFlag::Static);
+        // for block in control_flow_graph.values() {
+        //     let decompiled = decompile_block(block, &class.constant_pool)?;
+        //     let length = decompiled.len();
+        //     for (index, statement) in decompiled.iter().enumerate() {
+        //         if index == length - 1 {
+        //             if let AST::VoidReturn = statement {
+        //                 break;
+        //             }
+        //         } else {
+        //             write!(o, "      ")?;
+        //             self.write_ast(statement, class, is_static, method.is_init(), o)?;
+        //             writeln!(o)?;
+        //         }
+        //     }
+        // }
         Ok(())
     }
 
-    fn write_ast<W: Write>(&self, ast: &AST, class: &Class, is_static: bool, is_init: bool, o: &mut W) -> WriteResult {
-        match ast {
-            AST::Set { index, value } => {
-                if *index == 0 && !is_static {
-                    write!(o, "this = ");
-                } else {
-                    write!(o, "var{} = ", index);
-                }
-                self.write_ast(value, class, is_static, is_init, o)?;
-                write!(o, ";")?;
-            }
-            AST::Variable { index, var_type: _ } => {
-                if *index == 0 && !is_static {
-                    write!(o, "this")?;
-                } else {
-                    write!(o, "var{}", index)?;
-                }
-            }
-            AST::Call {
-                method_data,
-                reference,
-                args,
-            } => {
-                self.write_ast(reference, class, is_static, is_init, o)?;
-                let name = &method_data.name_and_type.name;
-                write!(o, ".{}(", name)?;
-                let len = args.len();
-                for (i, value) in args.iter().enumerate() {
-                    self.write_ast(value, class, is_static, is_init, o)?;
-                    if i != len - 1 {
-                        write!(o, ", ")?;
-                    }
-                }
-                write!(o, ");")?;
-            }
-            AST::Mul { lhs, rhs } => {
-                self.write_ast(lhs, class, is_static, is_init, o)?;
-                write!(o, " * ")?;
-                self.write_ast(rhs, class, is_static, is_init, o)?;
-                writeln!(o)?;
-            }
-            AST::ConstInt(value) => write!(o, "{}", value)?,
-            AST::ConstFloat(value) => write!(o, "{}", value)?,
-            AST::ConstString(value) => write!(o, "\"{}\"", value)?,
-            AST::VoidReturn => {
-                writeln!(o, "return;\n")?
-            }
-            AST::BasicCast { cast_type, value } => {
-                write!(o, "(({}) (", cast_type)?;
-                self.write_ast(value, class, is_static, is_init, o)?;
-                write!(o, "))")?;
-            }
-            AST::ClassCast { cast_type, value } => {
-                write!(o, "(({}) (", cast_type.name);
-                self.write_ast(value, class, is_static, is_init, o)?;
-                write!(o, "))")?;
-            }
-            AST::Static(member) => {
-                let ty = &member.name_and_type;
-
-                write!(o, "{}.{}", member.class.name, ty.name)?;
-            }
-            v => write!(o, "/* unknown */ {:?}", v)?,
-        }
-        Ok(())
-    }
+    // fn write_ast<W: Write>(&self, ast: &AST, class: &Class, is_static: bool, is_init: bool, o: &mut W) -> WriteResult {
+    //     match ast {
+    //         AST::Set { index, value } => {
+    //             if *index == 0 && !is_static {
+    //                 write!(o, "this = ");
+    //             } else {
+    //                 write!(o, "var{} = ", index);
+    //             }
+    //             self.write_ast(value, class, is_static, is_init, o)?;
+    //             write!(o, ";")?;
+    //         }
+    //         AST::Variable { index, var_type: _ } => {
+    //             if *index == 0 && !is_static {
+    //                 write!(o, "this")?;
+    //             } else {
+    //                 write!(o, "var{}", index)?;
+    //             }
+    //         }
+    //         AST::Call {
+    //             method_data,
+    //             reference,
+    //             args,
+    //         } => {
+    //             self.write_ast(reference, class, is_static, is_init, o)?;
+    //             let name = &method_data.name_and_type.name;
+    //             write!(o, ".{}(", name)?;
+    //             let len = args.len();
+    //             for (i, value) in args.iter().enumerate() {
+    //                 self.write_ast(value, class, is_static, is_init, o)?;
+    //                 if i != len - 1 {
+    //                     write!(o, ", ")?;
+    //                 }
+    //             }
+    //             write!(o, ");")?;
+    //         }
+    //         AST::Mul { lhs, rhs } => {
+    //             self.write_ast(lhs, class, is_static, is_init, o)?;
+    //             write!(o, " * ")?;
+    //             self.write_ast(rhs, class, is_static, is_init, o)?;
+    //             writeln!(o)?;
+    //         }
+    //         AST::ConstInt(value) => write!(o, "{}", value)?,
+    //         AST::ConstFloat(value) => write!(o, "{}", value)?,
+    //         AST::ConstString(value) => write!(o, "\"{}\"", value)?,
+    //         AST::VoidReturn => {
+    //             writeln!(o, "return;\n")?
+    //         }
+    //         AST::BasicCast { cast_type, value } => {
+    //             write!(o, "(({}) (", cast_type)?;
+    //             self.write_ast(value, class, is_static, is_init, o)?;
+    //             write!(o, "))")?;
+    //         }
+    //         AST::ClassCast { cast_type, value } => {
+    //             write!(o, "(({}) (", cast_type.name);
+    //             self.write_ast(value, class, is_static, is_init, o)?;
+    //             write!(o, "))")?;
+    //         }
+    //         AST::Static(member) => {
+    //             let ty = &member.name_and_type;
+    //
+    //             write!(o, "{}.{}", member.class.name, ty.name)?;
+    //         }
+    //         v => write!(o, "/* unknown */ {:?}", v)?,
+    //     }
+    //     Ok(())
+    // }
 
     fn write_method<W: Write>(&self, class: &Class, method: &Member, o: &mut W) -> WriteResult {
         write!(o, "    ")?;

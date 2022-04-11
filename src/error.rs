@@ -29,14 +29,20 @@ pub enum DecompileError {
     UnknownArrayType(u8),
     #[error("unknown op code {0}")]
     UnknownInstruction(u8),
-    #[error("empty stack")]
-    EmptyStack,
-    #[error("unexpected stack size {0}")]
-    StackSize(usize),
     #[error("expected method descriptor")]
     ExpectedMethodDescriptor,
     #[error(transparent)]
     InvalidConstant(#[from] ConstantError),
+    #[error(transparent)]
+    StackError(#[from] StackError),
+}
+
+#[derive(Error, Debug)]
+pub enum StackError {
+    #[error("nothing left on the stack")]
+    Empty,
+    #[error("stack still had {0} items remaining")]
+    Remaining(usize)
 }
 
 #[derive(Error, Debug)]

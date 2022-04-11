@@ -71,83 +71,83 @@ impl Readable for ConstantPool {
 }
 
 impl ConstantPool {
-    pub fn get_class_path(&self, index: PoolIndex) -> Result<Option<ClassPath>, ConstantError> {
-        if index == 0 { return Ok(None); }
-        match self.inner.get(&index) {
+    pub fn get_class_path(&self, index: &PoolIndex) -> Result<Option<ClassPath>, ConstantError> {
+        if *index == 0 { return Ok(None); }
+        match self.inner.get(index) {
             Some(constant) => match constant {
                 Constant::Class(v) => Ok(Some(ClassPath::from(
-                    self.get_utf8(*v)
-                        .map_err(|_| ConstantError::InvalidClassReference(index))?
+                    self.get_utf8(v)
+                        .map_err(|_| ConstantError::InvalidClassReference(*index))?
                 ))),
-                _ => Err(ConstantError::InvalidClassReference(index))
+                _ => Err(ConstantError::InvalidClassReference(*index))
             }
             None => Ok(None)
         }
     }
 
-    pub fn get_class_path_required(&self, index: PoolIndex) -> Result<ClassPath, ConstantError> {
-        match self.inner.get(&index) {
+    pub fn get_class_path_required(&self, index: &PoolIndex) -> Result<ClassPath, ConstantError> {
+        match self.inner.get(index) {
             Some(constant) => match constant {
                 Constant::Class(v) => Ok(ClassPath::from(
-                    self.get_utf8(*v)
-                        .map_err(|_| ConstantError::InvalidClassReference(index))?
+                    self.get_utf8(v)
+                        .map_err(|_| ConstantError::InvalidClassReference(*index))?
                 )),
-                _ => Err(ConstantError::InvalidClassReference(index))
+                _ => Err(ConstantError::InvalidClassReference(*index))
             }
-            None => Err(ConstantError::InvalidClassReference(index))
+            None => Err(ConstantError::InvalidClassReference(*index))
         }
     }
 
-    pub fn get_utf8(&self, index: PoolIndex) -> Result<&String, ConstantError> {
-        match self.inner.get(&index) {
+    pub fn get_utf8(&self, index: &PoolIndex) -> Result<&String, ConstantError> {
+        match self.inner.get(index) {
             Some(constant) => match constant {
                 Constant::Utf8(value) => Ok(value),
-                _ => Err(ConstantError::ExpectedUtf8(index))
+                _ => Err(ConstantError::ExpectedUtf8(*index))
             }
-            None => Err(ConstantError::NotFound(index))
+            None => Err(ConstantError::NotFound(*index))
         }
     }
 
-    pub fn get_member_ref(&self, index: PoolIndex) -> Result<MemberReference, ConstantError> {
-        match self.inner.get(&index) {
+    pub fn get_member_ref(&self, index: &PoolIndex) -> Result<MemberReference, ConstantError> {
+        match self.inner.get(index) {
             Some(constant) => match constant {
                 Constant::MethodRef(value) |
                 Constant::FieldRef(value) |
                 Constant::InterfaceMethodRef(value) => {
-                    let class = self.get_class_path_required(value.class_index)?;
-                    let name_and_type = self.get_name_and_type(value.name_and_type_info)?;
+                    let class = self.get_class_path_required(&value.class_index)?;
+                    let name_and_type = self.get_name_and_type(&value.name_and_type_info)?;
                     Ok(MemberReference {
                         class,
                         name_and_type
                     })
                 },
-                _ => Err(ConstantError::ExpectedMethodRef(index))
+                _ => Err(ConstantError::ExpectedMethodRef(*index))
             }
-            None => Err(ConstantError::NotFound(index))
+            None => Err(ConstantError::NotFound(*index))
         }
     }
 
-    pub fn get_name_and_type(&self, index: PoolIndex) -> Result<NameAndType, ConstantError> {
-        match self.inner.get(&index) {
+    pub fn get_name_and_type(&self, index: &PoolIndex) -> Result<NameAndType, ConstantError> {
+        match self.inner.get(index) {
             Some(constant) => match constant {
                 Constant::NameAndType(value) => Ok(NameAndType {
-                    name: self.get_utf8(value.name_index)?.clone(),
-                    descriptor: Descriptor::parse(self.get_utf8(value.descriptor_index)?),
+                    name: self.get_utf8(&value.name_index)?.clone(),
+                    descriptor: Descriptor::parse(self.get_utf8(&value.descriptor_index)?),
                 }),
-                _ => Err(ConstantError::ExpectedMethodRef(index))
+                _ => Err(ConstantError::ExpectedMethodRef(*index))
             }
-            None => Err(ConstantError::NotFound(index))
+            None => Err(ConstantError::NotFound(*index))
         }
     }
 
     pub fn read_utf8<R: Read>(&self, i: &mut R) -> ReadResult<&String> {
         let index = PoolIndex::read(i)?;
-        Ok(self.get_utf8(index)?)
+        Ok(self.get_utf8(&index)?)
     }
 
     pub fn read_class_path<R: Read>(&self, i: &mut R) -> ReadResult<Option<ClassPath>> {
         let index = PoolIndex::read(i)?;
-        Ok(self.get_class_path(index)?)
+        Ok(self.get_class_path(&index)?)
     }
 }
 

@@ -63,8 +63,7 @@ impl Attribute {
         i: &mut B,
         constant_pool: &ConstantPool,
     ) -> Result<Self, ReadError> where Self: Sized {
-        let name_index = u16::read(i)?;
-        let name = constant_pool.get_utf8(name_index)?;
+        let name = constant_pool.read_utf8(i)?;
         let data = u32::read_bytes(i)?;
         Ok(Attribute {
             name: name.clone(),
@@ -142,7 +141,7 @@ impl AttributeValue {
             "InnerClasses" => AttributeValue::InnerClasses(u16::read_vec(c)?),
             "Signature" => {
                 let id = u16::read(c)?;
-                AttributeValue::Signature(constant_pool.get_utf8(id)?.clone())
+                AttributeValue::Signature(constant_pool.get_utf8(&id)?.clone())
             }
             "SourceDebugExtension" => AttributeValue::SourceDebugExtension(data.to_vec()),
             "LineNumberTable" => AttributeValue::LineNumberTable(u16::read_vec(c)?),
