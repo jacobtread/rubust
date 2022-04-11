@@ -5,6 +5,7 @@ use std::io::Read;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 
 use crate::class::class::ClassPath;
+use crate::class::descriptor::Descriptor;
 use crate::error::ConstantError;
 use crate::error::ReadError::UnknownConstantTag;
 use crate::io::{Readable, ReadResult};
@@ -26,7 +27,7 @@ impl Debug for ConstantPool {
             f.write_str("ConstantPool {\n")?;
             let mut keys: Vec<&u16> = self.inner.keys().collect();
             keys.sort(); // Obtain a sorted version of the keys
-            for key in keys{
+            for key in keys {
                 let v = self.inner.get(key)
                     .expect("expected constant pool to contain index");
                 f.write_str(format!("  {}: {:?}\n", key, v).as_str())?;
@@ -70,18 +71,30 @@ impl Readable for ConstantPool {
 }
 
 impl ConstantPool {
-
     pub fn get_class_path(&self, index: PoolIndex) -> Result<Option<ClassPath>, ConstantError> {
-        if index == 0 { return Ok(None) }
+        if index == 0 { return Ok(None); }
         match self.inner.get(&index) {
             Some(constant) => match constant {
                 Constant::Class(v) => Ok(Some(ClassPath::from(
                     self.get_utf8(*v)
-                        .map_err(|_|ConstantError::InvalidClassReference(index))?
+                        .map_err(|_| ConstantError::InvalidClassReference(index))?
                 ))),
                 _ => Err(ConstantError::InvalidClassReference(index))
             }
             None => Ok(None)
+        }
+    }
+
+    pub fn get_class_path_required(&self, index: PoolIndex) -> Result<ClassPath, ConstantError> {
+        match self.inner.get(&index) {
+            Some(constant) => match constant {
+                Constant::Class(v) => Ok(ClassPath::from(
+                    self.get_utf8(*v)
+                        .map_err(|_| ConstantError::InvalidClassReference(index))?
+                )),
+                _ => Err(ConstantError::InvalidClassReference(index))
+            }
+            None => Err(ConstantError::InvalidClassReference(index))
         }
     }
 
@@ -90,6 +103,31 @@ impl ConstantPool {
             Some(constant) => match constant {
                 Constant::Utf8(value) => Ok(value),
                 _ => Err(ConstantError::ExpectedUtf8(index))
+            }
+            None => Err(ConstantError::NotFound(index))
+        }
+    }
+
+    pub fn get_member_ref(&self, index: PoolIndex) -> Result<&MemberReference, ConstantError> {
+        match self.inner.get(&index) {
+            Some(constant) => match constant {
+                Constant::MethodRef(value) |
+                Constant::FieldRef(value) |
+                Constant::InterfaceMethodRef(value) => Ok(value),
+                _ => Err(ConstantError::ExpectedMethodRef(index))
+            }
+            None => Err(ConstantError::NotFound(index))
+        }
+    }
+
+    pub fn get_name_and_type(&self, index: PoolIndex) -> Result<NameAndType, ConstantError> {
+        match self.inner.get(&index) {
+            Some(constant) => match constant {
+                Constant::NameAndType(value) => Ok(NameAndType {
+                    name: self.get_utf8(value.name_index)?.clone(),
+                    descriptor: Descriptor::parse(self.get_utf8(value.descriptor_index)?),
+                }),
+                _ => Err(ConstantError::ExpectedMethodRef(index))
             }
             None => Err(ConstantError::NotFound(index))
         }
@@ -106,13 +144,19 @@ impl ConstantPool {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct NameAndType {
+    pub name: String,
+    pub descriptor: Descriptor,
+}
+
 readable_struct! {
     struct MemberReference {
         class_index: PoolIndex,
         name_and_type_info: PoolIndex,
     }
 
-    struct NameAndType {
+    struct NameAndTypeIndex {
         name_index: PoolIndex,
         descriptor_index: PoolIndex,
     }
@@ -165,7 +209,7 @@ pub enum Constant {
     FieldRef(MemberReference),
     MethodRef(MemberReference),
     InterfaceMethodRef(MemberReference),
-    NameAndType(NameAndType),
+    NameAndType(NameAndTypeIndex),
     MethodHandle(MethodHandle),
     // MethodType contains a pool reference to a descriptor Ut8 constant
     MethodType(PoolIndex),
@@ -223,7 +267,7 @@ impl Readable for ConstantValue {
             ConstantTag::FieldRef => Constant::FieldRef(MemberReference::read(i)?),
             ConstantTag::MethodRef => Constant::MethodRef(MemberReference::read(i)?),
             ConstantTag::InterfaceMethodRef => Constant::InterfaceMethodRef(MemberReference::read(i)?),
-            ConstantTag::NameAndType => Constant::NameAndType(NameAndType::read(i)?),
+            ConstantTag::NameAndType => Constant::NameAndType(NameAndTypeIndex::read(i)?),
             ConstantTag::MethodHandle => Constant::MethodHandle(MethodHandle::read(i)?),
             ConstantTag::MethodType => Constant::MethodType(PoolIndex::read(i)?),
             ConstantTag::Dynamic => Constant::Dynamic(DynamicConstant::read(i)?),

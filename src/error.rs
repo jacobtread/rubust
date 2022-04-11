@@ -11,10 +11,12 @@ pub enum WriteError {
     IO(#[from] io::Error),
     #[error(transparent)]
     Fmt(#[from] std::fmt::Error),
+    #[error(transparent)]
+    DecompileError(#[from] DecompileError),
     #[error("method descriptor expected")]
     BadDescriptor,
     #[error("code attribute wasn't code attribute")]
-    BadCodeAttribute
+    BadCodeAttribute,
 }
 
 #[derive(Error, Debug)]
@@ -26,7 +28,15 @@ pub enum DecompileError {
     #[error("unknown array type {0}")]
     UnknownArrayType(u8),
     #[error("unknown op code {0}")]
-    UnknownInstruction(u8)
+    UnknownInstruction(u8),
+    #[error("empty stack")]
+    EmptyStack,
+    #[error("unexpected stack size {0}")]
+    StackSize(usize),
+    #[error("expected method descriptor")]
+    ExpectedMethodDescriptor,
+    #[error(transparent)]
+    InvalidConstant(#[from] ConstantError),
 }
 
 #[derive(Error, Debug)]
@@ -42,7 +52,7 @@ pub enum ReadError {
     #[error(transparent)]
     InvalidConstant(#[from] ConstantError),
     #[error("class name was not found in constant pool")]
-    NoClassName
+    NoClassName,
 }
 
 #[derive(Error, Debug)]
@@ -55,4 +65,6 @@ pub enum ConstantError {
     InvalidClassReference(PoolIndex),
     #[error("expected value at index {0} to be utf-8 class name")]
     InvalidClassReference2(PoolIndex),
+    #[error("expected value at index {0} to be method/interface ref")]
+    ExpectedMethodRef(PoolIndex),
 }

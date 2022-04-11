@@ -124,7 +124,7 @@ macro_rules! readable_struct {
             #[derive(Debug, Clone)]
             #[allow(dead_code)]
             pub struct $name {
-                pub $($field: $type,)*
+               $(pub $field: $type,)*
             }
 
             impl Readable for $name {
