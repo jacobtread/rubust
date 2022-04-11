@@ -83,26 +83,6 @@ impl ClassWriter {
         Ok(())
     }
 
-    pub fn write_access_flags<B: Write>(&self, access_flags: &AccessFlags, o: &mut B) -> Result<()> {
-        if access_flags.contains(ACC_PUBLIC) {
-            write!(o, "public ")?;
-        } else if access_flags.contains(ACC_PROTECTED) {
-            write!(o, "protected ")?;
-        } else if access_flags.contains(ACC_PRIVATE) {
-            write!(o, "private ")?;
-        }
-
-        if access_flags.contains(ACC_STATIC) {
-            write!(o, "static ")?;
-        }
-
-        if access_flags.contains(ACC_FINAL) {
-            write!(o, "final ")?;
-        }
-
-        Ok(())
-    }
-
     pub fn write_field<B: Write>(&self, field: &Member, o: &mut B) -> Result<()> {
         write!(o, "    ")?;
 

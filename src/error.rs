@@ -6,6 +6,14 @@ use thiserror::Error;
 use crate::class::constant::PoolIndex;
 
 #[derive(Error, Debug)]
+pub enum WriteError {
+    #[error(transparent)]
+    IO(#[from] io::Error),
+    #[error(transparent)]
+    Fmt(#[from] std::fmt::Error),
+}
+
+#[derive(Error, Debug)]
 pub enum ReadError {
     #[error(transparent)]
     IO(#[from] io::Error),

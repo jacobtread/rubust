@@ -6,6 +6,7 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 use crate::class::access::AccessFlags;
 use crate::class::attribute::Attribute;
 use crate::class::constant::{ConstantPool, PoolIndex};
+use crate::class::descriptor::Descriptor;
 use crate::class::member::Member;
 use crate::error::{ConstantError, ReadError};
 use crate::io::{Readable, ReadResult, VecReadableFn};
@@ -108,9 +109,9 @@ impl Readable for Class {
                 .map_err(ReadError::from)
         })?;
 
-        let fields = u16::read_vec_closure(i,|r|Member::read(r, &constant_pool))?;
-        let methods = u16::read_vec_closure(i,|r|Member::read(r, &constant_pool))?;
-        let attributes = u16::read_vec_closure(i, |r|Attribute::read(r, &constant_pool))?;
+        let fields = u16::read_vec_closure(i, |r| Member::read(r, &constant_pool))?;
+        let methods = u16::read_vec_closure(i, |r| Member::read(r, &constant_pool))?;
+        let attributes = u16::read_vec_closure(i, |r| Attribute::read(r, &constant_pool))?;
 
         Ok(Class {
             version,
@@ -121,8 +122,49 @@ impl Readable for Class {
             interfaces,
             fields,
             methods,
-            attributes
+            attributes,
         })
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Import {
+    pub package: Vec<String>,
+    pub name: String,
+}
+
+impl Class {
+    fn collect_imports_for(descriptor: &Descriptor) -> Vec<&ClassPath> {
+        let mut out = Vec::new();
+        match descriptor {
+            Descriptor::Class(path) => {
+                if !path.is_java_lang() {
+                    out.push(path)
+                }
+            }
+            Descriptor::Array(arr) => {
+                out.append(&mut Class::collect_imports_for(&arr.descriptor))
+            }
+            Descriptor::Method(method) => {
+                for x in &method.parameters {
+                    out.append(&mut Class::collect_imports_for(&x))
+                }
+                out.append(&mut Class::collect_imports_for(&method.return_type))
+            }
+            _ => {}
+        }
+        out
+    }
+
+    pub fn collect_imports(&self) -> Vec<&ClassPath> {
+        let mut out = Vec::new();
+        for field in &self.fields {
+            out.append(&mut Class::collect_imports_for(&field.descriptor))
+        }
+        for method in &self.methods {
+            out.append(&mut Class::collect_imports_for(&method.descriptor))
+        }
+        out
     }
 }
 
@@ -154,7 +196,12 @@ impl ClassPath {
     }
 
     pub fn is_object(&self) -> bool { self.is_java_lang() && self.outer_classes.is_empty() && self.name == "Object" }
-    pub fn is_java_lang(&self) -> bool { self.package.len() >= 2 && self.package[0] == "java" && self.package[1] == "lang" }
+    pub fn is_java_lang(&self) -> bool {
+        if self.package.len() != 2 {
+            return false;
+        }
+        self.package[0] == "java" && self.package[1] == "lang"
+    }
     pub fn package_str(&self) -> String { self.package.join(".") }
     pub fn jar_path(&self) -> String {
         let mut out = self.package_str();
